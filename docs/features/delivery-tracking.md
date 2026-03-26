@@ -151,7 +151,16 @@ subprocess.run(
 )
 
 page = open(output_path, encoding="utf-8", errors="ignore").read()
-summary = re.search(r"<th scope=\"row\">([^<]+)</th>.*?<td>(.*?)</td>.*?<td>(.*?)</td>.*?<td>(.*?)</td>.*?<td>(.*?)</td>.*?<td>(.*?)</td>", page, re.S)
+summary = re.search(
+    r"<th scope=\"row\">(?P<tracking>[^<]+)</th>.*?"
+    r"<td>(?P<sender>.*?)</td>.*?"
+    r"<td>(?P<receiver>.*?)</td>.*?"
+    r"<td>(?P<delivered_to>.*?)</td>.*?"
+    r"<td>(?P<kind>.*?)</td>.*?"
+    r"<td>(?P<result>.*?)</td>",
+    page,
+    re.S,
+)
 if not summary:
     raise SystemExit("기본정보 테이블을 찾지 못했습니다.")
 
@@ -184,8 +193,8 @@ latest_event = normalized_events[-1] if normalized_events else None
 
 print(json.dumps({
     "carrier": "epost",
-    "invoice": clean(summary.group(1)),
-    "status": clean(summary.group(6)),
+    "invoice": clean(summary.group("tracking")),
+    "status": clean(summary.group("result")),
     "timestamp": latest_event["timestamp"] if latest_event else None,
     "location": latest_event["location"] if latest_event else None,
     "event_count": len(normalized_events),
