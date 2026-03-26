@@ -187,7 +187,7 @@ test("delivery-tracking skill documents official CJ and ePost flows with extensi
   assert.match(featureDoc, /HTML/);
 });
 
-test("delivery-tracking docs avoid raw CJ personal fields in published examples", () => {
+test("delivery-tracking published examples lock a shared normalized non-PII schema", () => {
   const skill = read(path.join("delivery-tracking", "SKILL.md"));
   const featureDoc = read(path.join("docs", "features", "delivery-tracking.md"));
 
@@ -198,10 +198,42 @@ test("delivery-tracking docs avoid raw CJ personal fields in published examples"
   );
 
   for (const doc of [skill, featureDoc]) {
+    assert.match(doc, /공통 포맷/);
+    assert.match(doc, /공통 결과 스키마/);
+    assert.match(doc, /최근 이벤트/);
+    assert.match(doc, /`carrier`/);
+    assert.match(doc, /`invoice`/);
+    assert.match(doc, /`status`/);
+    assert.match(doc, /`timestamp`/);
+    assert.match(doc, /`location`/);
+    assert.match(doc, /`event_count`/);
+    assert.match(doc, /`recent_events`/);
+    assert.match(doc, /최근 최대 3개 이벤트/);
+    assert.doesNotMatch(doc, /최근 3~5개 이벤트/);
+    assert.match(doc, /"invoice":\s*payload\["parcelDetailResultMap"\]\["paramInvcNo"\]/);
     assert.match(doc, /"status_code":\s*latest\.get\("crgSt"\)/);
     assert.match(doc, /"status":\s*status_map\.get\(latest\.get\("crgSt"\),/);
     assert.match(doc, /"timestamp":\s*latest\.get\("dTime"\)/);
     assert.match(doc, /"location":\s*latest\.get\("regBranNm"\)/);
     assert.match(doc, /"event_count":\s*len\(events\)/);
+    assert.match(doc, /"recent_events":/);
+    assert.match(doc, /"invoice":\s*clean\(summary\.group/);
+    assert.match(doc, /"timestamp":\s*latest_event\["timestamp"\] if latest_event else None/);
+    assert.match(doc, /"location":\s*latest_event\["location"\] if latest_event else None/);
+    assert.match(doc, /"event_count":\s*len\(normalized_events\)/);
+    assert.match(doc, /"recent_events":\s*normalized_events\[-min\(3,\s*len\(normalized_events\)\):\]/);
+    assert.match(doc, /def clean_location\(raw: str\) -> str:/);
+    assert.match(doc, /TEL/);
+    assert.match(doc, /\\d\{2,4\}/);
+    assert.match(doc, /"location":\s*clean_location\(location\)/);
+    assert.doesNotMatch(doc, /"tracking_no":/);
+    assert.doesNotMatch(doc, /"latest_event_date":/);
+    assert.doesNotMatch(doc, /"latest_event_time":/);
+    assert.doesNotMatch(doc, /"latest_event_location":/);
+    assert.doesNotMatch(doc, /"delivered_to":/);
+    assert.doesNotMatch(doc, /"delivery_result":/);
   }
+
+  assert.doesNotMatch(skill, /"message":\s*latest\.get\("crgNm"\)/);
+  assert.doesNotMatch(featureDoc, /print\(\{\s*"tracking_no"/);
 });
