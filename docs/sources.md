@@ -15,6 +15,8 @@
 - 서울특별시 지하철 실시간 도착정보: https://www.data.go.kr/data/15058052/openapi.do
 - 우체국 도로명주소 검색: https://parcel.epost.go.kr/parcel/comm/zipcode/comm_newzipcd_list.jsp
 - CJ대한통운 배송조회: https://www.cjlogistics.com/ko/tool/parcel/tracking
+- CJ대한통운 배송상세 JSON: https://www.cjlogistics.com/ko/tool/parcel/tracking-detail
 - 우체국 배송조회: https://service.epost.go.kr/trace.RetrieveRegiPrclDeliv.postal?sid1=
+- 우체국 배송상세 HTML: https://service.epost.go.kr/trace.RetrieveDomRigiTraceList.comm
 - SOPS docs: https://getsops.io/docs/
 - age: https://github.com/FiloSottile/age

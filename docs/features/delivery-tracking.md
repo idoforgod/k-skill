@@ -37,28 +37,38 @@
 - 파라미터: `_csrf`, `paramInvcNo`
 
 ```bash
-python3 - <<'PY'
-import json
+tmp_body="$(mktemp)"
+tmp_cookie="$(mktemp)"
+tmp_json="$(mktemp)"
+invoice="1234567890"
+
+curl -sS -L -c "$tmp_cookie" \
+  "https://www.cjlogistics.com/ko/tool/parcel/tracking" \
+  -o "$tmp_body"
+
+csrf="$(python3 - <<'PY' "$tmp_body"
 import re
-import urllib.parse
-import urllib.request
+import sys
+text = open(sys.argv[1], encoding="utf-8", errors="ignore").read()
+print(re.search(r'name="_csrf" value="([^"]+)"', text).group(1))
+PY
+)"
 
-invoice = "1234567890"
-landing = urllib.request.urlopen(
-    "https://www.cjlogistics.com/ko/tool/parcel/tracking",
-    timeout=20,
-).read().decode("utf-8", "ignore")
-csrf = re.search(r'name="_csrf" value="([^"]+)"', landing).group(1)
+curl -sS -L -b "$tmp_cookie" \
+  -H "Content-Type: application/x-www-form-urlencoded; charset=UTF-8" \
+  --data-urlencode "_csrf=$csrf" \
+  --data-urlencode "paramInvcNo=$invoice" \
+  "https://www.cjlogistics.com/ko/tool/parcel/tracking-detail" \
+  -o "$tmp_json"
 
-body = urllib.parse.urlencode({"_csrf": csrf, "paramInvcNo": invoice}).encode()
-request = urllib.request.Request(
-    "https://www.cjlogistics.com/ko/tool/parcel/tracking-detail",
-    data=body,
-    headers={"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"},
-)
-payload = json.loads(urllib.request.urlopen(request, timeout=20).read().decode("utf-8"))
+python3 - <<'PY' "$tmp_json"
+import json
+import sys
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
 print(json.dumps(payload["parcelDetailResultMap"]["resultList"][-1], ensure_ascii=False, indent=2))
 PY
+
+rm -f "$tmp_body" "$tmp_cookie" "$tmp_json"
 ```
 
 CJ는 JSON 응답이므로 `parcelDetailResultMap.resultList` 를 기준으로 상태를 읽는 편이 가장 안정적이다.
