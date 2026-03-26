@@ -9,6 +9,10 @@ function read(relativePath) {
   return fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
 }
 
+function readJson(relativePath) {
+  return JSON.parse(read(relativePath));
+}
+
 function extractQuotedEntries(block, indent) {
   return block
     .split("\n")
@@ -41,6 +45,21 @@ function findJsonFenceAfterLabel(doc, label) {
 
   assert.ok(match, `expected JSON example after "${label}"`);
   return JSON.parse(match[1]);
+}
+
+function assertSanitizedPublicOutput(output, label) {
+  const serialized = JSON.stringify(output);
+
+  assert.doesNotMatch(serialized, /\bTEL\b/i, `${label} must not leak TEL fragments`);
+  assert.doesNotMatch(
+    serialized,
+    /\d{2,4}[.\-]\d{3,4}[.\-]\d{4}/,
+    `${label} must not leak phone-number-like strings anywhere in the published sample`,
+  );
+  assert.doesNotMatch(serialized, /crgNm/, `${label} must not leak CJ assignee/source fields`);
+  assert.doesNotMatch(serialized, /sender/i, `${label} must not leak sender fields`);
+  assert.doesNotMatch(serialized, /receiver/i, `${label} must not leak receiver fields`);
+  assert.doesNotMatch(serialized, /delivered_to/i, `${label} must not leak delivered_to fields`);
 }
 
 test("root npm test script includes the skill docs regression suite", () => {
@@ -339,6 +358,9 @@ test("delivery-tracking published examples lock a shared normalized non-PII sche
 });
 
 test("delivery-tracking docs publish aligned sample normalized outputs for both carriers", () => {
+  const expectedSamples = readJson(
+    path.join("scripts", "fixtures", "delivery-tracking-public-samples.json"),
+  );
   const skill = read(path.join("delivery-tracking", "SKILL.md"));
   const featureDoc = read(path.join("docs", "features", "delivery-tracking.md"));
   const cjSkillOutput = findJsonFenceAfterLabel(skill, "CJ 공개 출력 예시");
@@ -348,56 +370,8 @@ test("delivery-tracking docs publish aligned sample normalized outputs for both 
 
   assert.deepEqual(cjSkillOutput, cjFeatureOutput, "CJ sample output must stay aligned across docs");
   assert.deepEqual(epostSkillOutput, epostFeatureOutput, "ePost sample output must stay aligned across docs");
-
-  assert.deepEqual(Object.keys(cjSkillOutput), [
-    "carrier",
-    "invoice",
-    "status_code",
-    "status",
-    "timestamp",
-    "location",
-    "event_count",
-    "recent_events",
-  ]);
-  assert.equal(cjSkillOutput.carrier, "cj");
-  assert.equal(cjSkillOutput.invoice, "1234567890");
-  assert.equal(typeof cjSkillOutput.status, "string");
-  assert.equal(typeof cjSkillOutput.timestamp, "string");
-  assert.equal(typeof cjSkillOutput.location, "string");
-  assert.equal(typeof cjSkillOutput.event_count, "number");
-  assert.ok(Array.isArray(cjSkillOutput.recent_events));
-  assert.ok(cjSkillOutput.recent_events.length > 0 && cjSkillOutput.recent_events.length <= 3);
-  for (const event of cjSkillOutput.recent_events) {
-    assert.deepEqual(Object.keys(event), ["timestamp", "location", "status_code", "status"]);
-  }
-
-  assert.deepEqual(Object.keys(epostSkillOutput), [
-    "carrier",
-    "invoice",
-    "status",
-    "timestamp",
-    "location",
-    "event_count",
-    "recent_events",
-  ]);
-  assert.equal(epostSkillOutput.carrier, "epost");
-  assert.equal(epostSkillOutput.invoice, "1234567890123");
-  assert.equal(typeof epostSkillOutput.status, "string");
-  assert.equal(typeof epostSkillOutput.timestamp, "string");
-  assert.equal(typeof epostSkillOutput.location, "string");
-  assert.equal(typeof epostSkillOutput.event_count, "number");
-  assert.ok(Array.isArray(epostSkillOutput.recent_events));
-  assert.ok(epostSkillOutput.recent_events.length > 0 && epostSkillOutput.recent_events.length <= 3);
-  for (const event of epostSkillOutput.recent_events) {
-    assert.deepEqual(Object.keys(event), ["timestamp", "location", "status"]);
-    assert.ok(!JSON.stringify(event).includes("TEL"));
-  }
-
-  for (const output of [cjSkillOutput, epostSkillOutput]) {
-    const serialized = JSON.stringify(output);
-    assert.ok(!serialized.includes("crgNm"));
-    assert.ok(!serialized.includes("sender"));
-    assert.ok(!serialized.includes("receiver"));
-    assert.ok(!serialized.includes("delivered_to"));
-  }
+  assert.deepEqual(cjSkillOutput, expectedSamples.cj, "CJ sample output must stay pinned to the verified public fixture");
+  assert.deepEqual(epostSkillOutput, expectedSamples.epost, "ePost sample output must stay pinned to the verified public fixture");
+  assertSanitizedPublicOutput(cjSkillOutput, "CJ sample output");
+  assertSanitizedPublicOutput(epostSkillOutput, "ePost sample output");
 });
