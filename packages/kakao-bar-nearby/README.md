@@ -55,11 +55,11 @@ main().catch((error) => {
 
 ```json
 {
-  "anchor": { "name": "사당역 2호선" },
-  "meta": { "openNowCount": 3 },
+  "anchor": { "name": "사당1동먹자골목상점가" },
+  "meta": { "openNowCount": 4 },
   "items": [
-    { "name": "방배을지로골뱅이술집포차 사당역점", "open": "영업 중", "detail": "24:00 까지" },
     { "name": "우미노식탁", "open": "영업 중", "detail": "24:00 까지" },
+    { "name": "방배을지로골뱅이술집포차 사당역점", "open": "영업 중", "detail": "24:00 까지" },
     { "name": "커먼테이블", "open": "영업 중", "detail": "01:00 까지" }
   ]
 }

@@ -85,6 +85,16 @@ function assertSanitizedPublicOutput(output, label) {
   assert.doesNotMatch(serialized, /delivered_to/i, `${label} must not leak delivered_to fields`);
 }
 
+function assertKakaoBarNearbySadangSmokeSnapshot(smoke, label) {
+  assert.equal(smoke.anchor.name, "사당1동먹자골목상점가", `${label} anchor should stay on the verified area landmark`);
+  assert.equal(smoke.meta.openNowCount, 4, `${label} should publish the verified open-now count`);
+  assert.deepEqual(
+    smoke.items.map((item) => item.name),
+    ["우미노식탁", "방배을지로골뱅이술집포차 사당역점", "커먼테이블"],
+    `${label} should keep the verified top-3 ordering`,
+  );
+}
+
 test("root npm test script includes the skill docs regression suite", () => {
   const packageJson = JSON.parse(read("package.json"));
 
@@ -655,6 +665,20 @@ test("kakao-bar-nearby package README stays aligned with the Kakao Map live look
   assert.match(packageReadme, /https:\/\/m\.map\.kakao\.com\/actions\/searchView/);
   assert.match(packageReadme, /https:\/\/place-api\.map\.kakao\.com\/places\/panel3\//);
   assert.match(packageReadme, /searchNearbyBarsByLocationQuery/);
+});
+
+test("kakao-bar-nearby feature doc keeps the verified 2026-03-29 sadang smoke snapshot current", () => {
+  const featureDoc = read(path.join("docs", "features", "kakao-bar-nearby.md"));
+  const smoke = findJsonFenceAfterLabel(featureDoc, "## 검증된 live smoke 예시");
+
+  assertKakaoBarNearbySadangSmokeSnapshot(smoke, "feature doc smoke snapshot");
+});
+
+test("kakao-bar-nearby package README live smoke snapshot matches the verified 2026-03-29 sadang output", () => {
+  const packageReadme = read(path.join("packages", "kakao-bar-nearby", "README.md"));
+  const smoke = findJsonFenceAfterLabel(packageReadme, "## Live smoke snapshot");
+
+  assertKakaoBarNearbySadangSmokeSnapshot(smoke, "package README smoke snapshot");
 });
 
 test("repository docs advertise the fine-dust-location skill across the documented surfaces", () => {
