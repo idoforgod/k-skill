@@ -126,6 +126,24 @@ test("public fetchers compose day results with current standings via mocked fetc
   }
 });
 
+test("getMatchResults rejects impossible calendar dates before fetching", async () => {
+  let fetchCalled = false;
+
+  await assert.rejects(
+    () =>
+      getMatchResults("2026-13-40", {
+        leagueId: "K리그1",
+        fetchImpl: async () => {
+          fetchCalled = true;
+          return makeResponse(schedulePayload);
+        },
+      }),
+    /date must be a valid Date or YYYY-MM-DD string\./,
+  );
+
+  assert.equal(fetchCalled, false);
+});
+
 function makeResponse(body) {
   return new Response(JSON.stringify(body), {
     status: 200,

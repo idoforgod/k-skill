@@ -65,6 +65,10 @@ function normalizeDateInput(value) {
     throw new Error("date must be a valid Date or YYYY-MM-DD string.");
   }
 
+  if (!isValidCalendarDate(match[1], match[2], match[3])) {
+    throw new Error("date must be a valid Date or YYYY-MM-DD string.");
+  }
+
   return buildDateParts(match[1], match[2], match[3]);
 }
 
@@ -83,6 +87,27 @@ function buildDateParts(year, month, day) {
     isoDate: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
     dottedDate: `${year}.${String(month).padStart(2, "0")}.${String(day).padStart(2, "0")}`,
   };
+}
+
+function isValidCalendarDate(year, month, day) {
+  const numericYear = Number(year);
+  const numericMonth = Number(month);
+  const numericDay = Number(day);
+
+  if (!Number.isInteger(numericYear) || !Number.isInteger(numericMonth) || !Number.isInteger(numericDay)) {
+    return false;
+  }
+
+  if (numericMonth < 1 || numericMonth > 12 || numericDay < 1) {
+    return false;
+  }
+
+  const maxDay = [31, isLeapYear(numericYear) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][numericMonth - 1];
+  return numericDay <= maxDay;
+}
+
+function isLeapYear(year) {
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
 }
 
 function buildClubDirectory(clubList = []) {
