@@ -7,6 +7,8 @@
 - `korail2` / `carpedm20/korail2`: https://github.com/carpedm20/korail2
 - `korail2` anti-bot bypass PR #54: https://github.com/carpedm20/korail2/pull/54
 - `kbo-game`: https://github.com/vkehfdl1/kbo-game
+- K League 일정/결과 JSON: https://www.kleague.com/getScheduleList.do
+- K League 팀 순위 JSON: https://www.kleague.com/record/teamRank.do
 - `@ohah/hwpjs`: https://github.com/ohah/hwpjs
 - `hwp-mcp`: https://github.com/jkf87/hwp-mcp
 - `silver-flight-group/kakaocli`: https://github.com/silver-flight-group/kakaocli

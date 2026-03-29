@@ -563,6 +563,64 @@ test("root pack:dry-run script covers all publishable workspaces", () => {
   assert.match(packageJson.scripts["pack:dry-run"], /workspace daiso-product-search/);
   assert.match(packageJson.scripts["pack:dry-run"], /workspace blue-ribbon-nearby/);
   assert.match(packageJson.scripts["pack:dry-run"], /workspace kakao-bar-nearby/);
+  assert.match(packageJson.scripts["pack:dry-run"], /workspace kleague-results/);
+});
+
+test("repository docs advertise the kleague-results skill across the documented surfaces", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const roadmap = read(path.join("docs", "roadmap.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "kleague-results.md");
+
+  assert.ok(fs.existsSync(featureDocPath), "expected docs/features/kleague-results.md to exist");
+  assert.match(readme, /\| K리그 경기 결과 조회 \|/);
+  assert.match(readme, /\[K리그 결과 가이드\]\(docs\/features\/kleague-results\.md\)/);
+  assert.match(install, /--skill kleague-results/);
+  assert.match(roadmap, /K리그 경기 결과 조회 스킬 출시/);
+  assert.match(sources, /K League 일정\/결과 JSON: https:\/\/www\.kleague\.com\/getScheduleList\.do/);
+  assert.match(sources, /K League 팀 순위 JSON: https:\/\/www\.kleague\.com\/record\/teamRank\.do/);
+});
+
+test("kleague-results skill documents the official JSON flow for date, team, and standings lookups", () => {
+  const skillPath = path.join(repoRoot, "kleague-results", "SKILL.md");
+
+  assert.ok(fs.existsSync(skillPath), "expected kleague-results/SKILL.md to exist");
+
+  const skill = read(path.join("kleague-results", "SKILL.md"));
+  const featureDoc = read(path.join("docs", "features", "kleague-results.md"));
+
+  assert.match(skill, /^name: kleague-results$/m);
+  assert.match(skill, /^description: .*케이리그.*경기 결과.*순위.*$/m);
+
+  for (const doc of [skill, featureDoc]) {
+    assert.match(doc, /YYYY-MM-DD/);
+    assert.match(doc, /K리그1|K리그2/);
+    assert.match(doc, /FC서울|서울 이랜드|팀 코드/);
+    assert.match(doc, /https:\/\/www\.kleague\.com\/getScheduleList\.do/);
+    assert.match(doc, /https:\/\/www\.kleague\.com\/record\/teamRank\.do/);
+    assert.match(doc, /공식 JSON|공식 API|공식 표면/u);
+    assert.match(doc, /현재 순위|standings/i);
+    assert.match(doc, /kleague-results|K리그 결과 조회/u);
+  }
+});
+
+test("kleague-results package exports reusable results and standings helpers", () => {
+  const pkg = require(path.join(repoRoot, "packages", "kleague-results", "src", "index.js"));
+
+  assert.equal(typeof pkg.getMatchResults, "function");
+  assert.equal(typeof pkg.getStandings, "function");
+  assert.equal(typeof pkg.getKLeagueSummary, "function");
+});
+
+test("kleague-results package README stays aligned with the official K League JSON lookup flow", () => {
+  const packageReadme = read(path.join("packages", "kleague-results", "README.md"));
+
+  assert.match(packageReadme, /공식 K리그 JSON 엔드포인트/u);
+  assert.match(packageReadme, /getScheduleList\.do/);
+  assert.match(packageReadme, /teamRank\.do/);
+  assert.match(packageReadme, /getKLeagueSummary/);
+  assert.match(packageReadme, /FC서울/);
 });
 
 test("repository docs advertise the blue-ribbon-nearby skill across the documented surfaces", () => {
