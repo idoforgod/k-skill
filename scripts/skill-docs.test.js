@@ -85,6 +85,16 @@ function assertSanitizedPublicOutput(output, label) {
   assert.doesNotMatch(serialized, /delivered_to/i, `${label} must not leak delivered_to fields`);
 }
 
+function assertKakaoBarNearbySadangSmokeSnapshot(smoke, label) {
+  assert.equal(smoke.anchor.name, "사당1동먹자골목상점가", `${label} anchor should stay on the verified area landmark`);
+  assert.equal(smoke.meta.openNowCount, 4, `${label} should publish the verified open-now count`);
+  assert.deepEqual(
+    smoke.items.map((item) => item.name),
+    ["우미노식탁", "방배을지로골뱅이술집포차 사당역점", "커먼테이블"],
+    `${label} should keep the verified top-3 ordering`,
+  );
+}
+
 test("root npm test script includes the skill docs regression suite", () => {
   const packageJson = JSON.parse(read("package.json"));
 
@@ -200,7 +210,7 @@ test("ktx-booking docs document the helper-based live Korail workflow", () => {
     assert.match(doc, /--include-no-seats/);
     assert.match(doc, /--include-waiting-list/);
     assert.match(doc, /--try-waiting/);
-    assert.match(doc, /sops exec-env/);
+    assert.match(doc, /credential resolution order|KSKILL_KTX_ID/);
     assert.match(doc, /anti-bot|Dynapath|x-dynapath-m-token/i);
     assert.match(doc, /결제(까지)?는 자동화하지 않는다|결제는 제외/);
     assert.doesNotMatch(doc, /예약 시 선택할 `--train-index`/);
@@ -552,6 +562,65 @@ test("root pack:dry-run script covers all publishable workspaces", () => {
   assert.match(packageJson.scripts["pack:dry-run"], /workspace k-lotto/);
   assert.match(packageJson.scripts["pack:dry-run"], /workspace daiso-product-search/);
   assert.match(packageJson.scripts["pack:dry-run"], /workspace blue-ribbon-nearby/);
+  assert.match(packageJson.scripts["pack:dry-run"], /workspace kakao-bar-nearby/);
+  assert.match(packageJson.scripts["pack:dry-run"], /workspace kleague-results/);
+});
+
+test("repository docs advertise the kleague-results skill across the documented surfaces", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const roadmap = read(path.join("docs", "roadmap.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "kleague-results.md");
+
+  assert.ok(fs.existsSync(featureDocPath), "expected docs/features/kleague-results.md to exist");
+  assert.match(readme, /\| K리그 경기 결과 조회 \|/);
+  assert.match(readme, /\[K리그 결과 가이드\]\(docs\/features\/kleague-results\.md\)/);
+  assert.match(install, /--skill kleague-results/);
+  assert.match(roadmap, /K리그 경기 결과 조회 스킬 출시/);
+  assert.match(sources, /K League 일정\/결과 JSON: https:\/\/www\.kleague\.com\/getScheduleList\.do/);
+  assert.match(sources, /K League 팀 순위 JSON: https:\/\/www\.kleague\.com\/record\/teamRank\.do/);
+});
+
+test("kleague-results skill documents the official JSON flow for date, team, and standings lookups", () => {
+  const skillPath = path.join(repoRoot, "kleague-results", "SKILL.md");
+
+  assert.ok(fs.existsSync(skillPath), "expected kleague-results/SKILL.md to exist");
+
+  const skill = read(path.join("kleague-results", "SKILL.md"));
+  const featureDoc = read(path.join("docs", "features", "kleague-results.md"));
+
+  assert.match(skill, /^name: kleague-results$/m);
+  assert.match(skill, /^description: .*케이리그.*경기 결과.*순위.*$/m);
+
+  for (const doc of [skill, featureDoc]) {
+    assert.match(doc, /YYYY-MM-DD/);
+    assert.match(doc, /K리그1|K리그2/);
+    assert.match(doc, /FC서울|서울 이랜드|팀 코드/);
+    assert.match(doc, /https:\/\/www\.kleague\.com\/getScheduleList\.do/);
+    assert.match(doc, /https:\/\/www\.kleague\.com\/record\/teamRank\.do/);
+    assert.match(doc, /공식 JSON|공식 API|공식 표면/u);
+    assert.match(doc, /현재 순위|standings/i);
+    assert.match(doc, /kleague-results|K리그 결과 조회/u);
+  }
+});
+
+test("kleague-results package exports reusable results and standings helpers", () => {
+  const pkg = require(path.join(repoRoot, "packages", "kleague-results", "src", "index.js"));
+
+  assert.equal(typeof pkg.getMatchResults, "function");
+  assert.equal(typeof pkg.getStandings, "function");
+  assert.equal(typeof pkg.getKLeagueSummary, "function");
+});
+
+test("kleague-results package README stays aligned with the official K League JSON lookup flow", () => {
+  const packageReadme = read(path.join("packages", "kleague-results", "README.md"));
+
+  assert.match(packageReadme, /공식 K리그 JSON 엔드포인트/u);
+  assert.match(packageReadme, /getScheduleList\.do/);
+  assert.match(packageReadme, /teamRank\.do/);
+  assert.match(packageReadme, /getKLeagueSummary/);
+  assert.match(packageReadme, /FC서울/);
 });
 
 test("repository docs advertise the blue-ribbon-nearby skill across the documented surfaces", () => {
@@ -603,6 +672,71 @@ test("blue-ribbon-nearby package README stays aligned with the location-first an
   assert.match(packageReadme, /https:\/\/www\.bluer\.co\.kr\/search\/zone/);
   assert.match(packageReadme, /https:\/\/www\.bluer\.co\.kr\/restaurants\/map/);
   assert.match(packageReadme, /searchNearbyByLocationQuery/);
+});
+
+
+
+test("repository docs advertise the kakao-bar-nearby skill across the documented surfaces", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const roadmap = read(path.join("docs", "roadmap.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "kakao-bar-nearby.md");
+
+  assert.ok(fs.existsSync(featureDocPath), "expected docs/features/kakao-bar-nearby.md to exist");
+  assert.match(readme, /\| 근처 술집 조회 \|/);
+  assert.match(readme, /\[근처 술집 조회 가이드\]\(docs\/features\/kakao-bar-nearby\.md\)/);
+  assert.match(install, /--skill kakao-bar-nearby/);
+  assert.match(roadmap, /근처 술집 조회 스킬 출시/);
+  assert.match(sources, /카카오맵 모바일 검색: https:\/\/m\.map\.kakao\.com\/actions\/searchView/);
+  assert.match(sources, /카카오맵 장소 패널 JSON: https:\/\/place-api\.map\.kakao\.com\/places\/panel3\//);
+});
+
+test("kakao-bar-nearby skill documents location-first Kakao Map search with open-now/menu/seating hints", () => {
+  const skillPath = path.join(repoRoot, "kakao-bar-nearby", "SKILL.md");
+
+  assert.ok(fs.existsSync(skillPath), "expected kakao-bar-nearby/SKILL.md to exist");
+
+  const skill = read(path.join("kakao-bar-nearby", "SKILL.md"));
+  const featureDoc = read(path.join("docs", "features", "kakao-bar-nearby.md"));
+
+  assert.match(skill, /^name: kakao-bar-nearby$/m);
+
+  for (const doc of [skill, featureDoc]) {
+    assert.match(doc, /현재 위치/);
+    assert.match(doc, /서울역|강남|사당|논현/);
+    assert.match(doc, /https:\/\/m\.map\.kakao\.com\/actions\/searchView/);
+    assert.match(doc, /https:\/\/place-api\.map\.kakao\.com\/places\/panel3\//);
+    assert.match(doc, /영업 중|영업전|영업 상태/);
+    assert.match(doc, /메뉴/);
+    assert.match(doc, /단체석|좌석 옵션|인원 수용/);
+    assert.match(doc, /전화번호/);
+    assert.match(doc, /kakao-bar-nearby|근처 술집 조회/u);
+  }
+});
+
+test("kakao-bar-nearby package README stays aligned with the Kakao Map live lookup flow", () => {
+  const packageReadme = read(path.join("packages", "kakao-bar-nearby", "README.md"));
+
+  assert.match(packageReadme, /현재 위치를 먼저 물어본다/u);
+  assert.match(packageReadme, /서울역 술집/);
+  assert.match(packageReadme, /https:\/\/m\.map\.kakao\.com\/actions\/searchView/);
+  assert.match(packageReadme, /https:\/\/place-api\.map\.kakao\.com\/places\/panel3\//);
+  assert.match(packageReadme, /searchNearbyBarsByLocationQuery/);
+});
+
+test("kakao-bar-nearby feature doc keeps the verified 2026-03-29 sadang smoke snapshot current", () => {
+  const featureDoc = read(path.join("docs", "features", "kakao-bar-nearby.md"));
+  const smoke = findJsonFenceAfterLabel(featureDoc, "## 검증된 live smoke 예시");
+
+  assertKakaoBarNearbySadangSmokeSnapshot(smoke, "feature doc smoke snapshot");
+});
+
+test("kakao-bar-nearby package README live smoke snapshot matches the verified 2026-03-29 sadang output", () => {
+  const packageReadme = read(path.join("packages", "kakao-bar-nearby", "README.md"));
+  const smoke = findJsonFenceAfterLabel(packageReadme, "## Live smoke snapshot");
+
+  assertKakaoBarNearbySadangSmokeSnapshot(smoke, "package README smoke snapshot");
 });
 
 test("repository docs advertise the fine-dust-location skill across the documented surfaces", () => {
@@ -674,4 +808,84 @@ test("fine-dust helper python regression tests pass", () => {
     0,
     `expected python fine-dust helper regression tests to pass\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
   );
+});
+
+test("repository docs advertise the toss-securities skill across the documented surfaces", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const roadmap = read(path.join("docs", "roadmap.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "toss-securities.md");
+
+  assert.ok(fs.existsSync(featureDocPath), "expected docs/features/toss-securities.md to exist");
+  assert.match(readme, /\| 토스증권 조회 \|/);
+  assert.match(readme, /\[토스증권 조회 가이드\]\(docs\/features\/toss-securities\.md\)/);
+  assert.match(install, /--skill toss-securities/);
+  assert.match(roadmap, /토스증권 조회 스킬 출시/);
+  assert.match(sources, /tossinvest-cli: https:\/\/github\.com\/JungHoonGhae\/tossinvest-cli/);
+});
+
+test("toss-securities skill documents the tossctl install, auth, and read-only workflow", () => {
+  const skillPath = path.join(repoRoot, "toss-securities", "SKILL.md");
+
+  assert.ok(fs.existsSync(skillPath), "expected toss-securities/SKILL.md to exist");
+
+  const skill = read(path.join("toss-securities", "SKILL.md"));
+  const featureDoc = read(path.join("docs", "features", "toss-securities.md"));
+
+  assert.match(skill, /^name: toss-securities$/m);
+
+  for (const doc of [skill, featureDoc]) {
+    assert.match(doc, /tossctl/);
+    assert.match(doc, /JungHoonGhae\/tossinvest-cli/);
+    assert.match(doc, /auth login/);
+    assert.match(doc, /account summary/);
+    assert.match(doc, /portfolio positions/);
+    assert.match(doc, /quote get/);
+    assert.match(doc, /watchlist list/);
+    assert.match(doc, /read-only|조회 전용/u);
+    assert.doesNotMatch(doc, /order place/);
+  }
+});
+
+test("toss-securities package exposes safe read-only tossctl helpers", () => {
+  const pkg = require(path.join(repoRoot, "packages", "toss-securities", "src", "index.js"));
+
+  assert.equal(typeof pkg.buildReadOnlyCommand, "function");
+  assert.equal(typeof pkg.runReadOnlyCommand, "function");
+  assert.equal(typeof pkg.getAccountSummary, "function");
+  assert.equal(typeof pkg.getPortfolioPositions, "function");
+  assert.equal(typeof pkg.getQuote, "function");
+  assert.equal(typeof pkg.getQuoteBatch, "function");
+  assert.equal(typeof pkg.listWatchlist, "function");
+});
+
+test("toss-securities package README stays aligned with the read-only tossctl wrapper contract", () => {
+  const packageReadme = read(path.join("packages", "toss-securities", "README.md"));
+
+  assert.match(packageReadme, /read-only tossctl wrapper/i);
+  assert.match(packageReadme, /brew tap JungHoonGhae\/tossinvest-cli/);
+  assert.match(packageReadme, /account summary/);
+  assert.match(packageReadme, /quote get/);
+  assert.match(packageReadme, /order place/);
+  assert.match(packageReadme, /지원하지 않음|not supported/u);
+});
+
+test("pack:dry-run includes the toss-securities workspace", () => {
+  const packageJson = JSON.parse(read("package.json"));
+
+  assert.match(packageJson.scripts["pack:dry-run"], /workspace toss-securities/);
+});
+
+test("package-lock captures the toss-securities workspace metadata for npm ci", () => {
+  const packageLock = readJson("package-lock.json");
+
+  assert.deepEqual(packageLock.packages[""].workspaces, ["packages/*"]);
+  assert.deepEqual(packageLock.packages["node_modules/toss-securities"], {
+    resolved: "packages/toss-securities",
+    link: true,
+  });
+  assert.equal(packageLock.packages["packages/toss-securities"].version, "0.1.0");
+  assert.equal(packageLock.packages["packages/toss-securities"].license, "MIT");
+  assert.equal(packageLock.packages["packages/toss-securities"].engines.node, ">=18");
 });

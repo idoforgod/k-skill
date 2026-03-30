@@ -1,3 +1,0 @@
-creation_rules:
-  - path_regex: .*secrets\.env(\.plain)?$
-    age: age1replace-with-your-public-key

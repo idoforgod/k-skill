@@ -21,11 +21,11 @@
 ## 로컬 실행
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'node packages/k-skill-proxy/src/server.js'
+node packages/k-skill-proxy/src/server.js
 ```
+
+환경변수(`AIR_KOREA_OPEN_API_KEY` 등)가 이미 설정되어 있거나 `~/.config/k-skill/secrets.env`를 source한 상태에서 실행한다.
 
 ## PM2 실행
 
-루트의 `ecosystem.config.cjs` + `scripts/run-k-skill-proxy.sh` 조합을 사용하면 재부팅 이후에도 같은 encrypted secrets 경로로 다시 올라옵니다.
+루트의 `ecosystem.config.cjs` + `scripts/run-k-skill-proxy.sh` 조합을 사용하면 재부팅 이후에도 같은 환경변수로 다시 올라옵니다.

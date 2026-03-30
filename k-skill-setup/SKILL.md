@@ -1,6 +1,6 @@
 ---
 name: k-skill-setup
-description: After installing the full k-skill bundle, configure and verify the shared cross-platform setup with sops plus age, then optionally wire update checks and GitHub starring with explicit user consent.
+description: After installing the full k-skill bundle, configure and verify the shared cross-platform setup, then optionally wire update checks and GitHub starring with explicit user consent.
 license: MIT
 metadata:
   category: setup
@@ -14,47 +14,33 @@ metadata:
 
 전체 `k-skill` 설치가 끝난 뒤, 공통 후속 작업을 처리한다.
 
-- `sops + age` 설치
-- age key 생성
-- 공통 secrets 파일 생성
-- 암호화 확인
-- 런타임 주입 확인
+- credential 확보 (에이전트 vault 또는 기본 secrets.env)
+- 런타임 환경변수 확인
 - 선택 사항: 주기적인 업데이트 확인 자동화
 - 선택 사항: GitHub star 여부 확인 및 동의 시 실행
 
 이 스킬의 기본 정책:
 
 - 시크릿이 없으면 필요한 값 이름을 사용자에게 정확히 알려준다
-- 값을 채팅창에 붙여 넣으라고 하지 않는다
-- 로컬에 안전하게 등록하는 절차를 안내한 뒤 다시 진행한다
+- credential resolution order에 따라 확보한다
 - 필요한 패키지가 없으면 대체 구현을 찾기보다 전역 설치를 먼저 시도한다
 - `cron`, `launchd`, `schtasks`, `gh` 같은 지속성/외부 상태 변경은 자동으로 하지 말고 먼저 사용자 동의를 받는다
 - GitHub star는 사용자가 명시적으로 동의했을 때만 실행한다
 
-## Why this is the default setup path
+## Credential resolution order
 
-- 계정 가입이 필요 없다
-- macOS, Linux, Windows 모두 가능하다
-- 스킬은 비밀값 위치를 몰라도 되고, 표준 환경변수 이름만 보면 된다
-- 비밀값은 저장소에 평문으로 두지 않아도 된다
-- 설치 단계와 시크릿/운영 자동화 단계를 분리할 수 있다
+모든 credential-bearing 스킬은 아래 우선순위를 따른다.
 
-## Security model
+1. **이미 환경변수에 있으면** 그대로 사용한다.
+2. **에이전트가 자체 secret vault(1Password CLI, Bitwarden CLI, macOS Keychain 등)를 사용 중이면** 거기서 꺼내 환경변수로 주입해도 된다.
+3. **`~/.config/k-skill/secrets.env`** (기본 fallback) — plain dotenv 파일, 퍼미션 `0600`.
+4. **아무것도 없으면** 유저에게 물어서 2 또는 3에 저장한다.
 
-중요한 한계:
+기본 경로에 저장하는 것은 fallback일 뿐, 강제가 아니다.
 
-- 암호화된 파일은 안전하게 저장할 수 있다
-- 하지만 `sops exec-env ...` 로 실행된 프로세스는 복호화된 환경변수를 사용할 수 있다
-- 즉, 에이전트가 "쓸 수는 있지만 절대로 읽을 수는 없는" 구조는 아니다
+## Standard file location
 
-더 강한 모델이 필요하면 비밀값 자체를 넘기지 말고, 비밀값을 내부에서 소비하는 래퍼 명령만 노출해야 한다.
-
-## Standard file locations
-
-- age key: `~/.config/k-skill/age/keys.txt`
-- encrypted secrets file: `~/.config/k-skill/secrets.env`
-
-원하면 다른 위치를 써도 되지만, 기본 문서는 이 경로를 기준으로 한다.
+- secrets file (기본 fallback): `~/.config/k-skill/secrets.env`
 
 ## Install
 
@@ -68,59 +54,15 @@ npx --yes skills add <owner/repo> --all -g
 
 설치가 끝나면 이 스킬을 호출해 아래 setup 단계를 이어간다.
 
-### macOS
-
-```bash
-brew install sops age
-```
-
-### Ubuntu / Debian
-
-```bash
-sudo apt-get update
-sudo apt-get install -y sops age
-```
-
-### Arch Linux
-
-```bash
-sudo pacman -S sops age
-```
-
-### Windows
-
-```powershell
-winget install Mozilla.SOPS FiloSottile.age
-```
-
-패키지 이름은 배포 채널에 따라 바뀔 수 있으니, 실패하면 공식 releases 페이지를 확인한다.
-
 ## Setup steps
 
-### 1. Create an age key
+### 1. Create the default secrets file (if no vault is in use)
 
-```bash
-mkdir -p ~/.config/k-skill/age
-age-keygen -o ~/.config/k-skill/age/keys.txt
-```
-
-출력에 보이는 public key를 복사한다.
-
-### 2. Create `.sops.yaml`
-
-작업 디렉터리나 secrets 파일이 있는 디렉터리에 생성한다.
-
-```yaml
-creation_rules:
-  - path_regex: .*secrets\.env(\.plain)?$
-    age: age1replace-with-your-public-key
-```
-
-### 3. Create the plaintext env file once
+에이전트가 자체 vault를 쓰지 않는 경우, 기본 fallback 파일을 만든다.
 
 ```bash
 mkdir -p ~/.config/k-skill
-cat > ~/.config/k-skill/secrets.env.plain <<'EOF'
+cat > ~/.config/k-skill/secrets.env <<'EOF'
 KSKILL_SRT_ID=replace-me
 KSKILL_SRT_PASSWORD=replace-me
 KSKILL_KTX_ID=replace-me
@@ -128,31 +70,16 @@ KSKILL_KTX_PASSWORD=replace-me
 SEOUL_OPEN_API_KEY=replace-me
 AIR_KOREA_OPEN_API_KEY=replace-me
 EOF
+chmod 0600 ~/.config/k-skill/secrets.env
 ```
 
-실제 값을 채운다.
-
-### 4. Encrypt it
-
-```bash
-cd ~/.config/k-skill
-sops --encrypt --input-type dotenv --output-type dotenv \
-  secrets.env.plain > secrets.env
-rm secrets.env.plain
-```
+유저에게 물어서 실제 값을 채운다.
 
 ### Missing secret response template
 
-인증 스킬에서 값이 빠졌을 때는 다음 식으로 안내한다.
+인증 스킬에서 값이 빠졌을 때는 credential resolution order에 따라 확보한다.
 
-```text
-이 작업에는 <REQUIRED_SECRET_NAMES> 이 필요합니다.
-값을 채팅창에 보내지 말고 ~/.config/k-skill/secrets.env.plain 에 직접 채운 뒤
-sops 로 ~/.config/k-skill/secrets.env 로 암호화해 주세요.
-암호화가 끝나면 plaintext 파일은 지우고 bash scripts/check-setup.sh 로 다시 확인해 주세요.
-```
-
-예를 들면:
+필요한 값 예:
 
 - SRT: `KSKILL_SRT_ID`, `KSKILL_SRT_PASSWORD`
 - KTX: `KSKILL_KTX_ID`, `KSKILL_KTX_PASSWORD`
@@ -161,28 +88,13 @@ sops 로 ~/.config/k-skill/secrets.env 로 암호화해 주세요.
 
 시크릿이 비어 있다는 이유로 다른 서비스나 비공식 우회 경로를 자동 선택하지 않는다.
 
-### 5. Verify runtime injection
-
-```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'test -n "$KSKILL_SRT_ID" || test -n "$KSKILL_KTX_ID" || test -n "$SEOUL_OPEN_API_KEY" || test -n "$AIR_KOREA_OPEN_API_KEY"'
-```
-
-또는 저장소에 들어있는 점검 스크립트를 쓴다.
+### 2. Verify runtime environment
 
 ```bash
 bash scripts/check-setup.sh
 ```
 
-### 6. Run tools with the encrypted file
-
-```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" '<your command>'
-```
-
-### 7. Offer scheduled update checks
+### 3. Offer scheduled update checks
 
 setup이 끝나면 사용자에게 주기적인 업데이트 확인 자동화를 원하는지 먼저 묻는다. 원하지 않으면 건너뛴다.
 
@@ -226,7 +138,7 @@ schtasks /Create /SC DAILY /TN "k-skill-update-check" /TR "\"$HOME/.config/k-ski
 
 - `~/.config/k-skill/logs/skills-check.log`
 
-### 8. Offer GitHub starring with explicit consent
+### 4. Offer GitHub starring with explicit consent
 
 setup 마지막에는 다음처럼 짧게 묻는다.
 
@@ -249,31 +161,13 @@ gh repo star NomaDamas/k-skill
 
 성공하면 짧게 완료만 알린다.
 
-## Recommended shell helper
-
-```bash
-kskill-run() {
-  SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-  sops exec-env "$HOME/.config/k-skill/secrets.env" "$@"
-}
-```
-
-예시:
-
-```bash
-kskill-run python your-script.py
-```
-
 ## Completion checklist
 
-- `sops --version` works
-- `age-keygen --version` or `age --version` works
-- `~/.config/k-skill/age/keys.txt` exists
-- `~/.config/k-skill/secrets.env` exists and is encrypted
-- `sops exec-env ...` can inject expected env vars
+- `~/.config/k-skill/secrets.env` exists with permission `0600` (또는 에이전트가 자체 vault로 credential을 관리 중)
+- 필요한 환경변수가 설정되어 있다
 - 사용자가 원한 경우에만 업데이트 확인 자동화 또는 GitHub star가 설정되었다
 
 ## Notes
 
 - 기본 흐름은 "전체 스킬 설치 → 이 setup skill 실행 → 개별 기능 사용" 이다
-- 저장소 안에는 plaintext secret file을 두지 않는다
+- 저장소 안에는 secret file을 두지 않는다

@@ -33,14 +33,20 @@ metadata:
 
 - Python 3.10+
 - `python3 -m pip install korail2 pycryptodome`
-- `sops` and `age` installed
-- common setup reviewed in `../k-skill-setup/SKILL.md`
-- secret policy reviewed in `../docs/security-and-secrets.md`
 
-## Required secrets
+## Required environment variables
 
 - `KSKILL_KTX_ID`
 - `KSKILL_KTX_PASSWORD`
+
+### Credential resolution order
+
+1. **이미 환경변수에 있으면** 그대로 사용한다.
+2. **에이전트가 자체 secret vault(1Password CLI, Bitwarden CLI, macOS Keychain 등)를 사용 중이면** 거기서 꺼내 환경변수로 주입해도 된다.
+3. **`~/.config/k-skill/secrets.env`** (기본 fallback) — plain dotenv 파일, 퍼미션 `0600`.
+4. **아무것도 없으면** 유저에게 물어서 2 또는 3에 저장한다.
+
+기본 경로에 저장하는 것은 fallback일 뿐, 강제가 아니다.
 
 ## Inputs
 
@@ -62,16 +68,9 @@ metadata:
 python3 -m pip install korail2 pycryptodome
 ```
 
-### 1. Stop for secure registration when secrets are missing
+### 1. Ensure credentials are available
 
-`KSKILL_KTX_ID`, `KSKILL_KTX_PASSWORD`, `~/.config/k-skill/secrets.env`, `~/.config/k-skill/age/keys.txt` 중 하나라도 없으면 다음 식으로 안내하고 멈춘다.
-
-```text
-이 작업에는 KSKILL_KTX_ID, KSKILL_KTX_PASSWORD 가 필요합니다.
-값을 채팅창에 붙여 넣지 말고 ~/.config/k-skill/secrets.env.plain 에 직접 채운 뒤
-sops 로 ~/.config/k-skill/secrets.env 로 암호화해 주세요.
-암호화가 끝나면 plaintext 파일은 지우고 bash scripts/check-setup.sh 로 다시 확인해 주세요.
-```
+`KSKILL_KTX_ID`, `KSKILL_KTX_PASSWORD` 환경변수가 설정되어 있는지 확인한다. 없으면 위 credential resolution order에 따라 확보한다.
 
 시크릿이 없다는 이유로 웹사이트를 직접 긁거나 다른 비공식 경로를 찾지 않는다.
 
@@ -80,9 +79,7 @@ sops 로 ~/.config/k-skill/secrets.env 로 암호화해 주세요.
 항상 helper 를 통해 조회한다.
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'python3 scripts/ktx_booking.py search 서울 부산 20260328 090000 --limit 5'
+python3 scripts/ktx_booking.py search 서울 부산 20260328 090000 --limit 5
 ```
 
 좌석이 없는 열차도 후보에 포함하려면 `--include-no-seats`, 예약 대기 가능한 열차도 같이 보고 싶으면 `--include-waiting-list` 를 붙인다.
@@ -103,9 +100,7 @@ sops exec-env "$HOME/.config/k-skill/secrets.env" \
 조회 결과의 `train_id` 를 고른 뒤에만 예약한다. 이 값은 helper 가 열차 번호/운행일/시각/역 코드를 묶어 만든 stable selector 이므로, 재조회 시 같은 열차가 아직 있으면 그대로 잡고 없으면 실패한다.
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'python3 scripts/ktx_booking.py reserve 서울 부산 20260328 090000 --train-id <train_id> --seat-option general-first'
+python3 scripts/ktx_booking.py reserve 서울 부산 20260328 090000 --train-id <train_id> --seat-option general-first
 ```
 
 응답에는 예약번호, 운임, 구입기한이 포함된다. **결제는 자동화하지 않는다.**
@@ -116,15 +111,11 @@ sops exec-env "$HOME/.config/k-skill/secrets.env" \
 취소는 대상 예약을 다시 조회해 식별한 뒤에만 진행한다.
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'python3 scripts/ktx_booking.py reservations'
+python3 scripts/ktx_booking.py reservations
 ```
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'python3 scripts/ktx_booking.py cancel <reservation_id>'
+python3 scripts/ktx_booking.py cancel <reservation_id>
 ```
 
 ## Done when

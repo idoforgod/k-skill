@@ -13,7 +13,7 @@
 - [보안/시크릿 정책](../security-and-secrets.md) 확인
 - `k-skill-proxy` 또는 에어코리아 OpenAPI key
 
-## 필요한 시크릿
+## 필요한 환경변수
 
 클라이언트 기본값:
 
@@ -23,6 +23,13 @@
 프록시 없이 direct fallback 으로 쓸 때만:
 
 - `AIR_KOREA_OPEN_API_KEY`
+
+### Credential resolution order
+
+1. **이미 환경변수에 있으면** 그대로 사용한다.
+2. **에이전트가 자체 secret vault(1Password CLI, Bitwarden CLI, macOS Keychain 등)를 사용 중이면** 거기서 꺼내 환경변수로 주입해도 된다.
+3. **`~/.config/k-skill/secrets.env`** (기본 fallback) — plain dotenv 파일, 퍼미션 `0600`.
+4. **아무것도 없으면** 유저에게 물어서 2 또는 3에 저장한다.
 
 ## 입력값
 
@@ -41,9 +48,7 @@
 프록시 예시:
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'python3 scripts/fine_dust.py report --region-hint "서울 강남구" --json'
+python3 scripts/fine_dust.py report --region-hint "서울 강남구" --json
 ```
 
 후보 반환 예시:
@@ -77,29 +82,25 @@ curl -fsS --get 'https://k-skill-proxy.nomadamas.org/B552584/ArpltnInforInqireSv
 지역 기반 direct fallback:
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'curl -sG "http://apis.data.go.kr/B552584/MsrstnInfoInqireSvc/getMsrstnList" \
-    --data-urlencode "serviceKey=${AIR_KOREA_OPEN_API_KEY}" \
-    --data-urlencode "returnType=json" \
-    --data-urlencode "numOfRows=50" \
-    --data-urlencode "pageNo=1" \
-    --data-urlencode "addr=서울 강남구"'
+curl -sG "http://apis.data.go.kr/B552584/MsrstnInfoInqireSvc/getMsrstnList" \
+  --data-urlencode "serviceKey=${AIR_KOREA_OPEN_API_KEY}" \
+  --data-urlencode "returnType=json" \
+  --data-urlencode "numOfRows=50" \
+  --data-urlencode "pageNo=1" \
+  --data-urlencode "addr=서울 강남구"
 ```
 
 실시간 측정값:
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'curl -sG "http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty" \
-    --data-urlencode "serviceKey=${AIR_KOREA_OPEN_API_KEY}" \
-    --data-urlencode "returnType=json" \
-    --data-urlencode "numOfRows=100" \
-    --data-urlencode "pageNo=1" \
-    --data-urlencode "stationName=중구" \
-    --data-urlencode "dataTerm=DAILY" \
-    --data-urlencode "ver=1.4"'
+curl -sG "http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty" \
+  --data-urlencode "serviceKey=${AIR_KOREA_OPEN_API_KEY}" \
+  --data-urlencode "returnType=json" \
+  --data-urlencode "numOfRows=100" \
+  --data-urlencode "pageNo=1" \
+  --data-urlencode "stationName=중구" \
+  --data-urlencode "dataTerm=DAILY" \
+  --data-urlencode "ver=1.4"
 ```
 
 helper script 반복 검증:

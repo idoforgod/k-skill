@@ -337,10 +337,9 @@ def build_report(
 
 def build_missing_secret_message() -> str:
     return (
-        f"이 작업에는 {SECRET_NAME} 가 필요합니다.\n"
-        "값을 채팅창에 붙여 넣지 말고 ~/.config/k-skill/secrets.env.plain 에 직접 채운 뒤\n"
-        "sops 로 ~/.config/k-skill/secrets.env 로 암호화해 주세요.\n"
-        "암호화가 끝나면 plaintext 파일은 지우고 bash scripts/check-setup.sh 로 다시 확인해 주세요."
+        f"이 작업에는 {SECRET_NAME} 환경변수가 필요합니다.\n"
+        "환경변수가 설정되어 있지 않으면 ~/.config/k-skill/secrets.env 에 추가하거나\n"
+        "에이전트의 secret vault에서 주입해 주세요."
     )
 
 

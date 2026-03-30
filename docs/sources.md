@@ -7,6 +7,9 @@
 - `korail2` / `carpedm20/korail2`: https://github.com/carpedm20/korail2
 - `korail2` anti-bot bypass PR #54: https://github.com/carpedm20/korail2/pull/54
 - `kbo-game`: https://github.com/vkehfdl1/kbo-game
+- tossinvest-cli: https://github.com/JungHoonGhae/tossinvest-cli
+- K League 일정/결과 JSON: https://www.kleague.com/getScheduleList.do
+- K League 팀 순위 JSON: https://www.kleague.com/record/teamRank.do
 - `@ohah/hwpjs`: https://github.com/ohah/hwpjs
 - `hwp-mcp`: https://github.com/jkf87/hwp-mcp
 - `silver-flight-group/kakaocli`: https://github.com/silver-flight-group/kakaocli
@@ -24,6 +27,8 @@
 - 블루리본 메인: https://www.bluer.co.kr/
 - 블루리본 지역 검색: https://www.bluer.co.kr/search/zone
 - 블루리본 주변 맛집 JSON: https://www.bluer.co.kr/restaurants/map
+- 카카오맵 모바일 검색: https://m.map.kakao.com/actions/searchView
+- 카카오맵 장소 패널 JSON: https://place-api.map.kakao.com/places/panel3/<confirmId>
 - 서울특별시 지하철 실시간 도착정보: https://www.data.go.kr/data/15058052/openapi.do
 - 에어코리아 대기오염정보: https://www.data.go.kr/data/15073861/openapi.do
 - 에어코리아 측정소정보: https://www.data.go.kr/data/15073877/openapi.do
@@ -32,5 +37,3 @@
 - CJ대한통운 배송상세 JSON: https://www.cjlogistics.com/ko/tool/parcel/tracking-detail
 - 우체국 배송조회: https://service.epost.go.kr/trace.RetrieveRegiPrclDeliv.postal?sid1=
 - 우체국 배송상세 HTML: https://service.epost.go.kr/trace.RetrieveDomRigiTraceList.comm
-- SOPS docs: https://getsops.io/docs/
-- age: https://github.com/FiloSottile/age

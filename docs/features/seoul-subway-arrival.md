@@ -12,9 +12,16 @@
 - [보안/시크릿 정책](../security-and-secrets.md) 확인
 - 서울 열린데이터 광장 API key
 
-## 필요한 시크릿
+## 필요한 환경변수
 
 - `SEOUL_OPEN_API_KEY`
+
+### Credential resolution order
+
+1. **이미 환경변수에 있으면** 그대로 사용한다.
+2. **에이전트가 자체 secret vault(1Password CLI, Bitwarden CLI, macOS Keychain 등)를 사용 중이면** 거기서 꺼내 환경변수로 주입해도 된다.
+3. **`~/.config/k-skill/secrets.env`** (기본 fallback) — plain dotenv 파일, 퍼미션 `0600`.
+4. **아무것도 없으면** 유저에게 물어서 2 또는 3에 저장한다.
 
 ## 입력값
 
@@ -23,17 +30,14 @@
 
 ## 기본 흐름
 
-1. `SEOUL_OPEN_API_KEY` 가 없으면 채팅에 붙여 넣게 하지 말고 로컬 secrets 등록 절차를 안내합니다.
-2. API key가 안전하게 주입되는지 확인합니다.
+1. `SEOUL_OPEN_API_KEY` 가 없으면 credential resolution order에 따라 확보합니다.
 3. 역명 기준으로 실시간 도착정보를 조회합니다.
 4. 호선, 진행 방향, 도착 메시지, 조회 시점을 함께 요약합니다.
 
 ## 예시
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'curl -s "http://swopenAPI.seoul.go.kr/api/subway/${SEOUL_OPEN_API_KEY}/json/realtimeStationArrival/0/8/강남"'
+curl -s "http://swopenAPI.seoul.go.kr/api/subway/${SEOUL_OPEN_API_KEY}/json/realtimeStationArrival/0/8/강남"
 ```
 
 ## 주의할 점

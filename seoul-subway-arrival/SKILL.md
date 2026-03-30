@@ -23,14 +23,20 @@ metadata:
 ## Prerequisites
 
 - 서울 열린데이터 광장 API key
-- `sops` and `age` installed
-- common setup reviewed in `../k-skill-setup/SKILL.md`
-- secret policy reviewed in `../docs/security-and-secrets.md`
 - optional: `jq`
 
-## Required secrets
+## Required environment variables
 
 - `SEOUL_OPEN_API_KEY`
+
+### Credential resolution order
+
+1. **이미 환경변수에 있으면** 그대로 사용한다.
+2. **에이전트가 자체 secret vault(1Password CLI, Bitwarden CLI, macOS Keychain 등)를 사용 중이면** 거기서 꺼내 환경변수로 주입해도 된다.
+3. **`~/.config/k-skill/secrets.env`** (기본 fallback) — plain dotenv 파일, 퍼미션 `0600`.
+4. **아무것도 없으면** 유저에게 물어서 2 또는 3에 저장한다.
+
+기본 경로에 저장하는 것은 fallback일 뿐, 강제가 아니다.
 
 ## Inputs
 
@@ -39,34 +45,18 @@ metadata:
 
 ## Workflow
 
-### 1. Stop for secure registration when the API key is missing
+### 1. Ensure credentials are available
 
-평문 key를 붙여 넣지 않는다.
-
-`SEOUL_OPEN_API_KEY`, `~/.config/k-skill/secrets.env`, `~/.config/k-skill/age/keys.txt` 중 하나라도 없으면 다음 식으로 안내하고 멈춘다.
-
-```text
-이 작업에는 SEOUL_OPEN_API_KEY 가 필요합니다.
-값을 채팅창에 붙여 넣지 말고 ~/.config/k-skill/secrets.env.plain 에 직접 채운 뒤
-sops 로 ~/.config/k-skill/secrets.env 로 암호화해 주세요.
-암호화가 끝나면 plaintext 파일은 지우고 bash scripts/check-setup.sh 로 다시 확인해 주세요.
-```
+`SEOUL_OPEN_API_KEY` 환경변수가 설정되어 있는지 확인한다. 없으면 위 credential resolution order에 따라 확보한다.
 
 시크릿이 없다는 이유로 비공식 미러 API나 다른 출처로 자동 우회하지 않는다.
-
-```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" 'test -n "$SEOUL_OPEN_API_KEY"'
-```
 
 ### 2. Query the official station arrival endpoint
 
 서울 실시간 지하철 API는 역명 기준 실시간 도착 정보를 JSON/XML로 제공한다. 기본 질의 예시는 다음 패턴을 쓴다.
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'curl -s "http://swopenAPI.seoul.go.kr/api/subway/${SEOUL_OPEN_API_KEY}/json/realtimeStationArrival/0/8/강남"'
+curl -s "http://swopenAPI.seoul.go.kr/api/subway/${SEOUL_OPEN_API_KEY}/json/realtimeStationArrival/0/8/강남"
 ```
 
 ### 3. Summarize the response

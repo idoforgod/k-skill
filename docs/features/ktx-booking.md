@@ -15,10 +15,17 @@
 - [공통 설정 가이드](../setup.md) 완료
 - [보안/시크릿 정책](../security-and-secrets.md) 확인
 
-## 필요한 시크릿
+## 필요한 환경변수
 
 - `KSKILL_KTX_ID`
 - `KSKILL_KTX_PASSWORD`
+
+### Credential resolution order
+
+1. **이미 환경변수에 있으면** 그대로 사용한다.
+2. **에이전트가 자체 secret vault(1Password CLI, Bitwarden CLI, macOS Keychain 등)를 사용 중이면** 거기서 꺼내 환경변수로 주입해도 된다.
+3. **`~/.config/k-skill/secrets.env`** (기본 fallback) — plain dotenv 파일, 퍼미션 `0600`.
+4. **아무것도 없으면** 유저에게 물어서 2 또는 3에 저장한다.
 
 ## 입력값
 
@@ -44,7 +51,7 @@
 ## 기본 흐름
 
 1. `korail2` 또는 `pycryptodome` 패키지가 없으면 다른 방법으로 우회하지 말고 먼저 전역 설치한다.
-2. `KSKILL_KTX_ID`, `KSKILL_KTX_PASSWORD` 가 없으면 채팅에 붙여 넣게 하지 말고 로컬 secrets 등록 절차를 안내한다.
+2. `KSKILL_KTX_ID`, `KSKILL_KTX_PASSWORD` 가 없으면 credential resolution order에 따라 확보한다.
 3. helper 로 먼저 열차를 조회한다.
 4. 후보 열차의 `index`, `train_id`, 출발/도착 시각, KTX 여부, 좌석 여부를 보여준다.
 5. 대상 열차가 명확할 때만 예약한다.
@@ -55,9 +62,7 @@
 조회:
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'python3 scripts/ktx_booking.py search 서울 부산 20260328 090000 --limit 5'
+python3 scripts/ktx_booking.py search 서울 부산 20260328 090000 --limit 5
 ```
 
 좌석이 없는 열차까지 같이 보고 싶으면 `--include-no-seats`, 예약 대기 가능 열차도 같이 보고 싶으면 `--include-waiting-list` 를 붙인다.
@@ -67,9 +72,7 @@ sops exec-env "$HOME/.config/k-skill/secrets.env" \
 예약:
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'python3 scripts/ktx_booking.py reserve 서울 부산 20260328 090000 --train-id <train_id> --seat-option general-first'
+python3 scripts/ktx_booking.py reserve 서울 부산 20260328 090000 --train-id <train_id> --seat-option general-first
 ```
 
 좌석이 없을 때 예약 대기까지 시도하려면 조회 단계에서도 `--include-waiting-list` 를 켜고, 예약 단계에서 `--try-waiting` 을 추가한다.
@@ -77,17 +80,13 @@ sops exec-env "$HOME/.config/k-skill/secrets.env" \
 예약 확인:
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'python3 scripts/ktx_booking.py reservations'
+python3 scripts/ktx_booking.py reservations
 ```
 
 취소:
 
 ```bash
-SOPS_AGE_KEY_FILE="$HOME/.config/k-skill/age/keys.txt" \
-sops exec-env "$HOME/.config/k-skill/secrets.env" \
-  'python3 scripts/ktx_booking.py cancel <reservation_id>'
+python3 scripts/ktx_booking.py cancel <reservation_id>
 ```
 
 응답은 JSON 으로 나오며 예약번호, 구입기한, 운임 확인에 바로 쓸 수 있다. **결제는 제외** 하고 예약까지만 자동화한다.
@@ -95,6 +94,6 @@ sops exec-env "$HOME/.config/k-skill/secrets.env" \
 ## 주의할 점
 
 - SRT 예매와는 별도 표면이므로 혼용하지 않는다.
-- 평문 비밀번호 전달은 금지한다.
+- credential은 환경변수로 주입한다.
 - 결제 완료까지 자동화하는 범위는 아니다.
 - Korail anti-bot 규칙이 다시 바뀌면 helper 도 함께 점검해야 한다.

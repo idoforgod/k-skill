@@ -15,7 +15,7 @@
 Codex나 Claude Code에 아래 문장을 그대로 붙여 넣으면 된다.
 
 ```text
-이 레포의 설치 문서를 읽고 k-skill 전체 스킬을 먼저 설치해줘. 설치가 끝나면 k-skill-setup 스킬을 사용해서 sops + age, 공통 secrets 파일, 런타임 주입 확인까지 이어서 진행해줘. 끝나면 설치된 스킬과 다음 단계만 짧게 정리해.
+이 레포의 설치 문서를 읽고 k-skill 전체 스킬을 먼저 설치해줘. 설치가 끝나면 k-skill-setup 스킬을 사용해서 credential 확보와 환경변수 확인까지 이어서 진행해줘. 끝나면 설치된 스킬과 다음 단계만 짧게 정리해.
 ```
 
 ## 직접 설치
@@ -46,11 +46,14 @@ k-skill-setup 스킬을 사용해서 공통 설정을 진행해줘.
 npx --yes skills add <owner/repo> \
   --skill hwp \
   --skill kbo-results \
+  --skill kleague-results \
+  --skill toss-securities \
   --skill lotto-results \
   --skill kakaotalk-mac \
   --skill fine-dust-location \
   --skill daiso-product-search \
   --skill blue-ribbon-nearby \
+  --skill kakao-bar-nearby \
   --skill zipcode-search \
   --skill delivery-tracking
 ```
@@ -100,7 +103,7 @@ npm run ci
 ### Node 패키지
 
 ```bash
-npm install -g @ohah/hwpjs kbo-game k-lotto
+npm install -g @ohah/hwpjs kbo-game kleague-results toss-securities k-lotto
 export NODE_PATH="$(npm root -g)"
 ```
 
@@ -110,6 +113,8 @@ export NODE_PATH="$(npm root -g)"
 
 ```bash
 brew install silver-flight-group/tap/kakaocli
+brew tap JungHoonGhae/tossinvest-cli
+brew install tossctl
 ```
 
 ### Python 패키지
