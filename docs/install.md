@@ -47,6 +47,7 @@ npx --yes skills add <owner/repo> \
   --skill hwp \
   --skill kbo-results \
   --skill kleague-results \
+  --skill toss-securities \
   --skill lotto-results \
   --skill kakaotalk-mac \
   --skill fine-dust-location \
@@ -102,7 +103,7 @@ npm run ci
 ### Node 패키지
 
 ```bash
-npm install -g @ohah/hwpjs kbo-game kleague-results k-lotto
+npm install -g @ohah/hwpjs kbo-game kleague-results toss-securities k-lotto
 export NODE_PATH="$(npm root -g)"
 ```
 
@@ -112,6 +113,8 @@ export NODE_PATH="$(npm root -g)"
 
 ```bash
 brew install silver-flight-group/tap/kakaocli
+brew tap JungHoonGhae/tossinvest-cli
+brew install tossctl
 ```
 
 ### Python 패키지

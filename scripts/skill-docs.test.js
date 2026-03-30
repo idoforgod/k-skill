@@ -809,3 +809,70 @@ test("fine-dust helper python regression tests pass", () => {
     `expected python fine-dust helper regression tests to pass\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
   );
 });
+
+test("repository docs advertise the toss-securities skill across the documented surfaces", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const roadmap = read(path.join("docs", "roadmap.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "toss-securities.md");
+
+  assert.ok(fs.existsSync(featureDocPath), "expected docs/features/toss-securities.md to exist");
+  assert.match(readme, /\| 토스증권 조회 \|/);
+  assert.match(readme, /\[토스증권 조회 가이드\]\(docs\/features\/toss-securities\.md\)/);
+  assert.match(install, /--skill toss-securities/);
+  assert.match(roadmap, /토스증권 조회 스킬 출시/);
+  assert.match(sources, /tossinvest-cli: https:\/\/github\.com\/JungHoonGhae\/tossinvest-cli/);
+});
+
+test("toss-securities skill documents the tossctl install, auth, and read-only workflow", () => {
+  const skillPath = path.join(repoRoot, "toss-securities", "SKILL.md");
+
+  assert.ok(fs.existsSync(skillPath), "expected toss-securities/SKILL.md to exist");
+
+  const skill = read(path.join("toss-securities", "SKILL.md"));
+  const featureDoc = read(path.join("docs", "features", "toss-securities.md"));
+
+  assert.match(skill, /^name: toss-securities$/m);
+
+  for (const doc of [skill, featureDoc]) {
+    assert.match(doc, /tossctl/);
+    assert.match(doc, /JungHoonGhae\/tossinvest-cli/);
+    assert.match(doc, /auth login/);
+    assert.match(doc, /account summary/);
+    assert.match(doc, /portfolio positions/);
+    assert.match(doc, /quote get/);
+    assert.match(doc, /watchlist list/);
+    assert.match(doc, /read-only|조회 전용/u);
+    assert.doesNotMatch(doc, /order place/);
+  }
+});
+
+test("toss-securities package exposes safe read-only tossctl helpers", () => {
+  const pkg = require(path.join(repoRoot, "packages", "toss-securities", "src", "index.js"));
+
+  assert.equal(typeof pkg.buildReadOnlyCommand, "function");
+  assert.equal(typeof pkg.runReadOnlyCommand, "function");
+  assert.equal(typeof pkg.getAccountSummary, "function");
+  assert.equal(typeof pkg.getPortfolioPositions, "function");
+  assert.equal(typeof pkg.getQuote, "function");
+  assert.equal(typeof pkg.getQuoteBatch, "function");
+  assert.equal(typeof pkg.listWatchlist, "function");
+});
+
+test("toss-securities package README stays aligned with the read-only tossctl wrapper contract", () => {
+  const packageReadme = read(path.join("packages", "toss-securities", "README.md"));
+
+  assert.match(packageReadme, /read-only tossctl wrapper/i);
+  assert.match(packageReadme, /brew tap JungHoonGhae\/tossinvest-cli/);
+  assert.match(packageReadme, /account summary/);
+  assert.match(packageReadme, /quote get/);
+  assert.match(packageReadme, /order place/);
+  assert.match(packageReadme, /지원하지 않음|not supported/u);
+});
+
+test("pack:dry-run includes the toss-securities workspace", () => {
+  const packageJson = JSON.parse(read("package.json"));
+
+  assert.match(packageJson.scripts["pack:dry-run"], /workspace toss-securities/);
+});
