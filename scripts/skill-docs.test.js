@@ -101,6 +101,15 @@ test("root npm test script includes the skill docs regression suite", () => {
   assert.match(packageJson.scripts.test, /node --test scripts\/skill-docs\.test\.js/);
 });
 
+test("README advertises OpenClaw among the supported coding agents", () => {
+  const readme = read("README.md");
+
+  assert.match(
+    readme,
+    /Claude Code, Codex, OpenCode, OpenClaw\/ClawHub 등 각종 코딩 에이전트 지원합니다\./,
+  );
+});
+
 test("hwp skill documents environment-aware routing and supported operations", () => {
   const skillPath = path.join(repoRoot, "hwp", "SKILL.md");
 
