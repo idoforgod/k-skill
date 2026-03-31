@@ -354,6 +354,24 @@ function buildServer({ env = process.env, provider = null } = {}) {
       };
     }
 
+    const cacheKey = makeCacheKey({
+      route: "seoul-subway-arrival",
+      ...normalized
+    });
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return {
+        ...cached,
+        proxy: {
+          ...cached.proxy,
+          cache: {
+            hit: true,
+            ttl_ms: config.cacheTtlMs
+          }
+        }
+      };
+    }
+
     const upstream = await proxySeoulSubwayRequest({
       ...normalized,
       apiKey: config.seoulOpenApiKey
@@ -369,8 +387,17 @@ function buildServer({ env = process.env, provider = null } = {}) {
     const payload = JSON.parse(upstream.body);
     payload.proxy = {
       name: config.proxyName,
+      cache: {
+        hit: false,
+        ttl_ms: config.cacheTtlMs
+      },
       requested_at: new Date().toISOString()
     };
+
+    if (upstream.statusCode >= 200 && upstream.statusCode < 300) {
+      cache.set(cacheKey, payload, config.cacheTtlMs);
+    }
+
     return payload;
   });
 

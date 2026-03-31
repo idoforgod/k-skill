@@ -178,6 +178,64 @@ test("public AirKorea passthrough route forwards allowed upstream responses", as
   assert.match(response.body, /resultCode/);
 });
 
+test("seoul subway endpoint caches successful upstream responses for normalized queries", async (t) => {
+  const originalFetch = global.fetch;
+  let fetchCalls = 0;
+  global.fetch = async () => {
+    fetchCalls += 1;
+    return new Response(
+      JSON.stringify({
+        errorMessage: {
+          status: 200,
+          code: "INFO-000",
+          message: "정상 처리되었습니다."
+        },
+        realtimeArrivalList: [
+          {
+            statnNm: "강남",
+            trainLineNm: "2호선",
+            updnLine: "내선",
+            arvlMsg2: "전역 출발",
+            arvlMsg3: "역삼",
+            barvlDt: "60"
+          }
+        ]
+      }),
+      {
+        status: 200,
+        headers: { "content-type": "application/json;charset=UTF-8" }
+      }
+    );
+  };
+
+  const app = buildServer({
+    env: {
+      SEOUL_OPEN_API_KEY: "seoul-key",
+      KSKILL_PROXY_CACHE_TTL_MS: "60000"
+    }
+  });
+
+  t.after(async () => {
+    global.fetch = originalFetch;
+    await app.close();
+  });
+
+  const first = await app.inject({
+    method: "GET",
+    url: "/v1/seoul-subway/arrival?station=%EA%B0%95%EB%82%A8&start_index=0&end_index=8"
+  });
+  const second = await app.inject({
+    method: "GET",
+    url: "/v1/seoul-subway/arrival?stationName=%EA%B0%95%EB%82%A8"
+  });
+
+  assert.equal(first.statusCode, 200);
+  assert.equal(second.statusCode, 200);
+  assert.equal(fetchCalls, 1);
+  assert.equal(first.json().proxy.cache.hit, false);
+  assert.equal(second.json().proxy.cache.hit, true);
+});
+
 test("seoul subway endpoint stays publicly callable without proxy auth", async (t) => {
   const originalFetch = global.fetch;
   let calledUrl;
