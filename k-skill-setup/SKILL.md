@@ -68,12 +68,14 @@ KSKILL_SRT_PASSWORD=replace-me
 KSKILL_KTX_ID=replace-me
 KSKILL_KTX_PASSWORD=replace-me
 AIR_KOREA_OPEN_API_KEY=replace-me
-KSKILL_PROXY_BASE_URL=https://k-skill-proxy.nomadamas.org
+KSKILL_PROXY_BASE_URL=https://your-proxy.example.com
 EOF
 chmod 0600 ~/.config/k-skill/secrets.env
 ```
 
 유저에게 물어서 실제 값을 채운다.
+
+서울 지하철 도착정보는 hosted public route rollout 이 끝나기 전까지 `KSKILL_PROXY_BASE_URL` 을 self-host 또는 배포 확인이 끝난 proxy URL 로 채운다. 미세먼지만 hosted proxy 로 쓸 때는 이 값을 비워 둘 수 있다.
 
 ### Missing secret response template
 
@@ -83,7 +85,7 @@ chmod 0600 ~/.config/k-skill/secrets.env
 
 - SRT: `KSKILL_SRT_ID`, `KSKILL_SRT_PASSWORD`
 - KTX: `KSKILL_KTX_ID`, `KSKILL_KTX_PASSWORD`
-- 서울 지하철: `KSKILL_PROXY_BASE_URL`
+- 서울 지하철: self-host 또는 배포 확인이 끝난 `KSKILL_PROXY_BASE_URL`
 - 사용자 위치 미세먼지 조회: `KSKILL_PROXY_BASE_URL` 또는 `AIR_KOREA_OPEN_API_KEY`
 
 시크릿이 비어 있다는 이유로 다른 서비스나 비공식 우회 경로를 자동 선택하지 않는다.

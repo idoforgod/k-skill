@@ -31,7 +31,7 @@ node packages/k-skill-proxy/src/server.js
 서울 지하철 도착정보 예시:
 
 ```bash
-curl -fsS --get 'https://k-skill-proxy.nomadamas.org/v1/seoul-subway/arrival' \
+curl -fsS --get 'http://127.0.0.1:4020/v1/seoul-subway/arrival' \
   --data-urlencode 'stationName=강남'
 ```
 

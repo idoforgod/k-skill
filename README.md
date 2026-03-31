@@ -21,7 +21,7 @@ Claude code, codex, opencode 등 각종 코딩 에이전트 지원합니다.
 | SRT 예매 | 열차 조회, 예약, 예약 확인, 취소 | 필요 | [SRT 예매 가이드](docs/features/srt-booking.md) |
 | KTX 예매 | Dynapath anti-bot 대응 helper 로 KTX/Korail 열차 조회, 예약, 예약 확인, 취소 | 필요 | [KTX 예매 가이드](docs/features/ktx-booking.md) |
 | 카카오톡 Mac CLI | macOS에서 kakaocli로 대화 조회, 검색, 테스트 전송, 확인 후 실제 전송 | 불필요 | [카카오톡 Mac CLI 가이드](docs/features/kakaotalk-mac.md) |
-| 서울 지하철 도착정보 조회 | `k-skill-proxy` 경유로 역 기준 실시간 도착 예정 열차 확인 | 불필요 | [서울 지하철 도착정보 가이드](docs/features/seoul-subway-arrival.md) |
+| 서울 지하철 도착정보 조회 | self-host 또는 배포 확인이 끝난 `k-skill-proxy` 경유로 역 기준 실시간 도착 예정 열차 확인 | 프록시 URL 필요 | [서울 지하철 도착정보 가이드](docs/features/seoul-subway-arrival.md) |
 | 사용자 위치 미세먼지 조회 | `k-skill-proxy` 로 현재 위치 또는 지역 fallback 기준 PM10/PM2.5 확인 | 불필요 | [사용자 위치 미세먼지 조회 가이드](docs/features/fine-dust-location.md) |
 | KBO 경기 결과 조회 | 날짜별 경기 일정, 결과, 팀별 필터링 | 불필요 | [KBO 결과 가이드](docs/features/kbo-results.md) |
 | K리그 경기 결과 조회 | 날짜별 K리그1/K리그2 경기 결과, 팀별 필터링, 현재 순위 확인 | 불필요 | [K리그 결과 가이드](docs/features/kleague-results.md) |

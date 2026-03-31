@@ -25,8 +25,10 @@ KSKILL_SRT_PASSWORD=replace-me
 KSKILL_KTX_ID=replace-me
 KSKILL_KTX_PASSWORD=replace-me
 AIR_KOREA_OPEN_API_KEY=replace-me
-KSKILL_PROXY_BASE_URL=https://k-skill-proxy.nomadamas.org
+KSKILL_PROXY_BASE_URL=https://your-proxy.example.com
 ```
+
+서울 지하철 도착정보는 hosted public route rollout 이 끝나기 전까지 self-host 또는 배포 확인이 끝난 proxy URL 만 넣는다. 미세먼지만 hosted proxy 로 쓸 때는 이 값을 비워 두고 skill 기본값을 써도 된다.
 
 ## Missing secret handling policy
 
@@ -60,6 +62,6 @@ KSKILL_PROXY_BASE_URL=https://k-skill-proxy.nomadamas.org
 - `AIR_KOREA_OPEN_API_KEY`
 - `KSKILL_PROXY_BASE_URL`
 
-프록시 운영자 문맥에서는 upstream 환경변수 `SEOUL_OPEN_API_KEY` 도 사용할 수 있다. 다만 일반 사용자/client 쪽 기본 secrets 파일에는 넣지 않는다.
+프록시 운영자 문맥에서는 upstream 환경변수 `SEOUL_OPEN_API_KEY` 도 사용할 수 있다. 다만 일반 사용자/client 쪽 기본 secrets 파일에는 넣지 않는다. `KSKILL_PROXY_BASE_URL` 도 서울 지하철 route가 실제 배포된 proxy URL 로만 넣는다.
 
 이 레포의 credential-bearing skill은 전부 이 정책을 전제로 작성한다. 자세한 공통 설치 절차는 [공통 설정 가이드](setup.md)를 본다.

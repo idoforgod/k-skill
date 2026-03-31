@@ -157,7 +157,7 @@ test("repository docs advertise the kakaotalk-mac skill", () => {
   assert.match(install, /--skill kakaotalk-mac/);
 });
 
-test("seoul subway docs default to the public proxy-backed flow", () => {
+test("seoul subway docs require an explicit proxy until the hosted route is live", () => {
   const readme = read("README.md");
   const setup = read(path.join("docs", "setup.md"));
   const install = read(path.join("docs", "install.md"));
@@ -169,16 +169,19 @@ test("seoul subway docs default to the public proxy-backed flow", () => {
   const proxyReadme = read(path.join("packages", "k-skill-proxy", "README.md"));
   const secretsExample = read(path.join("examples", "secrets.env.example"));
 
-  assert.match(readme, /\| 서울 지하철 도착정보 조회 \| .* \| 불필요 \|/);
-  assert.match(setup, /\| 서울 지하철 도착정보 조회 \| `KSKILL_PROXY_BASE_URL` \|/);
+  assert.match(readme, /\| 서울 지하철 도착정보 조회 \| .* \| 프록시 URL 필요 \|/);
+  assert.match(setup, /\| 서울 지하철 도착정보 조회 \| self-host 또는 배포 확인이 끝난 `KSKILL_PROXY_BASE_URL` \|/);
   assert.match(install, /--skill seoul-subway-arrival/);
 
   for (const doc of [skill, featureDoc]) {
     assert.match(doc, /KSKILL_PROXY_BASE_URL/);
     assert.match(doc, /\/v1\/seoul-subway\/arrival/);
-    assert.match(doc, /사용자가 .*OpenAPI key.*직접.*필요가? 없다|개인 API key 없이/i);
+    assert.match(doc, /사용자가 .*OpenAPI key.*직접.*필요(가|는)? 없다|개인 API key 없이/i);
+    assert.match(doc, /self-host|운영 중인 proxy|배포가 끝난 proxy/i);
     assert.doesNotMatch(doc, /SEOUL_OPEN_API_KEY/);
     assert.doesNotMatch(doc, /swopenAPI\.seoul\.go\.kr\/api\/subway\/\$\{SEOUL_OPEN_API_KEY\}/);
+    assert.doesNotMatch(doc, /기본값 `https:\/\/k-skill-proxy\.nomadamas\.org`/);
+    assert.doesNotMatch(doc, /없으면 hosted proxy .*기본/);
   }
 
   assert.match(proxyDoc, /GET \/v1\/seoul-subway\/arrival/);
@@ -186,9 +189,11 @@ test("seoul subway docs default to the public proxy-backed flow", () => {
   assert.match(proxyReadme, /GET \/v1\/seoul-subway\/arrival/);
   assert.match(proxyReadme, /SEOUL_OPEN_API_KEY/);
   assert.match(security, /KSKILL_PROXY_BASE_URL/);
-  assert.match(setupSkill, /서울 지하철: `KSKILL_PROXY_BASE_URL`/);
+  assert.match(security, /배포가 끝난 proxy|self-host/i);
+  assert.match(setupSkill, /서울 지하철: self-host 또는 배포 확인이 끝난 `KSKILL_PROXY_BASE_URL`/);
   assert.doesNotMatch(secretsExample, /SEOUL_OPEN_API_KEY/);
-  assert.match(secretsExample, /KSKILL_PROXY_BASE_URL=https:\/\/k-skill-proxy\.nomadamas\.org/);
+  assert.match(secretsExample, /KSKILL_PROXY_BASE_URL=https:\/\/your-proxy\.example\.com/);
+  assert.doesNotMatch(secretsExample, /KSKILL_PROXY_BASE_URL=https:\/\/k-skill-proxy\.nomadamas\.org/);
 });
 
 test("kakaotalk-mac skill documents safe macOS kakaocli usage", () => {
