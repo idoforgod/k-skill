@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Privacy Challenge</title>
+  </head>
+  <body>
+    <div id="challenge-running">Powered and protected by Privacy</div>
+    <script>
+      (function () {
+        var challengeRunning = true
+        if (challengeRunning && window.self === window.top) {
+          location.reload(true)
+        }
+      })()
+    </script>
+  </body>
+</html>

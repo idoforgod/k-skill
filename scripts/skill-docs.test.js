@@ -604,11 +604,72 @@ test("daiso-product-search docs record the shipped feature and official sources"
   assert.match(sources, /https:\/\/www\.daisomall\.co\.kr\/api\/pd\/pdh\/selStrPkupStck/);
 });
 
+test("repository docs advertise the coupang-product-search skill", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "coupang-product-search.md");
+
+  assert.ok(fs.existsSync(featureDocPath), "expected docs/features/coupang-product-search.md to exist");
+  assert.match(readme, /\| 쿠팡 상품 가격 조회 \|/);
+  assert.match(readme, /\[쿠팡 상품 가격 조회\]\(docs\/features\/coupang-product-search\.md\)/);
+  assert.match(install, /--skill coupang-product-search/);
+});
+
+test("coupang-product-search docs and skill keep the blocked-browser guidance explicit", () => {
+  const skillPath = path.join(repoRoot, "coupang-product-search", "SKILL.md");
+  const featureDoc = read(path.join("docs", "features", "coupang-product-search.md"));
+  const packageReadme = read(path.join("packages", "coupang-product-search", "README.md"));
+
+  assert.ok(fs.existsSync(skillPath), "expected coupang-product-search/SKILL.md to exist");
+
+  const skill = read(path.join("coupang-product-search", "SKILL.md"));
+
+  for (const doc of [skill, featureDoc, packageReadme]) {
+    assert.match(doc, /developers\.coupangcorp\.com\/hc\/ko/);
+    assert.match(doc, /www\.coupang\.com\/np\/search\?q=/);
+    assert.match(doc, /m\.coupang\.com\/nm\/search\?q=/);
+    assert.match(doc, /Access Denied/);
+    assert.match(doc, /headless Playwright|Playwright headless|headless browser/i);
+    assert.match(doc, /브라우저 세션|HTML 캡처/);
+  }
+});
+
+test("coupang-product-search package exposes URL builders, parsers, and probe helpers", () => {
+  const pkg = require(path.join(repoRoot, "packages", "coupang-product-search", "src", "index.js"));
+  const parse = require(path.join(repoRoot, "packages", "coupang-product-search", "src", "parse.js"));
+  const roadmap = read(path.join("docs", "roadmap.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const packageJson = JSON.parse(read("package.json"));
+
+  for (const key of [
+    "buildSearchUrl",
+    "buildProductUrl",
+    "buildReviewsUrl",
+    "searchProducts",
+    "getProductDetail",
+    "getProductReviews",
+    "probeAutomation",
+    "detectBlockedAccess"
+  ]) {
+    assert.equal(typeof pkg[key], "function", `${key} should be exported`);
+  }
+
+  for (const key of ["parseSearchResultsHtml", "parseProductDetailHtml", "parseReviewsHtml"]) {
+    assert.equal(typeof parse[key], "function", `${key} should be exported`);
+  }
+
+  assert.match(roadmap, /쿠팡 상품 가격 조회 스킬 출시/);
+  assert.match(sources, /developers\.coupangcorp\.com\/hc\/ko/);
+  assert.match(sources, /www\.coupang\.com\/np\/search\?q=/);
+  assert.match(packageJson.scripts["pack:dry-run"], /workspace coupang-product-search/);
+});
+
 test("root pack:dry-run script covers all publishable workspaces", () => {
   const packageJson = readJson("package.json");
 
   assert.match(packageJson.scripts["pack:dry-run"], /workspace k-lotto/);
   assert.match(packageJson.scripts["pack:dry-run"], /workspace daiso-product-search/);
+  assert.match(packageJson.scripts["pack:dry-run"], /workspace coupang-product-search/);
   assert.match(packageJson.scripts["pack:dry-run"], /workspace blue-ribbon-nearby/);
   assert.match(packageJson.scripts["pack:dry-run"], /workspace kakao-bar-nearby/);
   assert.match(packageJson.scripts["pack:dry-run"], /workspace kleague-results/);

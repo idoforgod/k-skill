@@ -24,6 +24,10 @@
 - 다이소몰 상품 요약 목록: https://www.daisomall.co.kr/ssn/search/GoodsMummResult
 - 다이소몰 매장 픽업 재고: https://www.daisomall.co.kr/api/pd/pdh/selStrPkupStck
 - 다이소몰 온라인 재고: https://www.daisomall.co.kr/api/pdo/selOnlStck
+- Coupang developer docs: https://developers.coupangcorp.com/hc/ko
+- Coupang desktop shopper search: https://www.coupang.com/np/search?q=
+- Coupang mobile shopper search: https://m.coupang.com/nm/search?q=
+- Coupang product page: https://www.coupang.com/vp/products/<productId>
 - 블루리본 메인: https://www.bluer.co.kr/
 - 블루리본 지역 검색: https://www.bluer.co.kr/search/zone
 - 블루리본 주변 맛집 JSON: https://www.bluer.co.kr/restaurants/map

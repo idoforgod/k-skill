@@ -55,7 +55,8 @@ npx --yes skills add <owner/repo> \
   --skill blue-ribbon-nearby \
   --skill kakao-bar-nearby \
   --skill zipcode-search \
-  --skill delivery-tracking
+  --skill delivery-tracking \
+  --skill coupang-product-search
 ```
 
 인증이 필요한 기능만 부분 설치할 때도 `k-skill-setup` 은 같이 넣는다.
@@ -103,7 +104,7 @@ npm run ci
 ### Node 패키지
 
 ```bash
-npm install -g @ohah/hwpjs kbo-game kleague-results toss-securities k-lotto
+npm install -g @ohah/hwpjs kbo-game kleague-results toss-securities k-lotto coupang-product-search
 export NODE_PATH="$(npm root -g)"
 ```
 
