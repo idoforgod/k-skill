@@ -29,6 +29,11 @@ const detailHtml = fs.readFileSync(path.join(fixturesDir, "detail.html"), "utf8"
 const reviewsHtml = fs.readFileSync(path.join(fixturesDir, "reviews.html"), "utf8")
 const blockedHtml = fs.readFileSync(path.join(fixturesDir, "access-denied.html"), "utf8")
 const privacyChallengeHtml = fs.readFileSync(path.join(fixturesDir, "privacy-challenge.html"), "utf8")
+const coupangDocsFiles = [
+  path.join(repoRoot, "packages/coupang-product-search/README.md"),
+  path.join(repoRoot, "docs/features/coupang-product-search.md"),
+  path.join(repoRoot, "coupang-product-search/SKILL.md")
+]
 
 test("buildSearchUrl and product/review URL helpers keep official Coupang URL shapes", () => {
   assert.equal(
@@ -222,13 +227,7 @@ test("probeAutomation keeps 403 access-denied mobile responses blocked", async (
 })
 
 test("repo docs describe Coupang anti-bot outcomes as variable blocked results", () => {
-  const files = [
-    path.join(repoRoot, "packages/coupang-product-search/README.md"),
-    path.join(repoRoot, "docs/features/coupang-product-search.md"),
-    path.join(repoRoot, "coupang-product-search/SKILL.md")
-  ]
-
-  for (const file of files) {
+  for (const file of coupangDocsFiles) {
     const contents = fs.readFileSync(file, "utf8")
 
     assert.match(
@@ -237,5 +236,18 @@ test("repo docs describe Coupang anti-bot outcomes as variable blocked results",
       file
     )
     assert.doesNotMatch(contents, /mobile direct HTTP.*200 challenge HTML|m\.coupang\.com.*200 challenge HTML/i, file)
+  }
+})
+
+test("repo docs explain that probeAutomation leaves browser null without browserFetchHtml", () => {
+  for (const file of coupangDocsFiles) {
+    const contents = fs.readFileSync(file, "utf8")
+
+    assert.match(contents, /browserFetchHtml/i, file)
+    assert.match(
+      contents,
+      /browser[^.\n]*null|browser === null|browser 값은 .*null/i,
+      file
+    )
   }
 })
