@@ -998,3 +998,88 @@ test("package-lock captures the toss-securities workspace metadata for npm ci", 
   assert.equal(packageLock.packages["packages/toss-securities"].license, "MIT");
   assert.equal(packageLock.packages["packages/toss-securities"].engines.node, ">=18");
 });
+
+test("repository docs advertise the korean-law-search skill with mode-specific korean-law-mcp setup guidance", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const setup = read(path.join("docs", "setup.md"));
+  const security = read(path.join("docs", "security-and-secrets.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const roadmap = read(path.join("docs", "roadmap.md"));
+  const setupSkill = read(path.join("k-skill-setup", "SKILL.md"));
+  const featureDoc = read(path.join("docs", "features", "korean-law-search.md"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "korean-law-search.md");
+
+  assert.ok(fs.existsSync(featureDocPath), "expected docs/features/korean-law-search.md to exist");
+  assert.match(readme, /\| 한국 법령 검색 \|/);
+  assert.match(readme, /\[한국 법령 검색 가이드\]\(docs\/features\/korean-law-search\.md\)/);
+  assert.match(readme, /로컬 CLI\/MCP면 `LAW_OC` 필요, remote endpoint면 불필요/);
+  assert.match(install, /--skill korean-law-search/);
+  assert.match(install, /로컬 CLI\/MCP 경로는 `LAW_OC`/);
+  assert.match(install, /remote endpoint는 `LAW_OC` 없이 `url`만/);
+  assert.match(setup, /한국 법령 검색의 로컬 CLI\/MCP 경로용 `LAW_OC`/);
+  assert.match(setup, /remote MCP endpoint는 사용자 `LAW_OC` 없이 `url`만으로 연결/);
+  assert.match(featureDoc, /로컬 CLI 또는 로컬 MCP server 경로는 `LAW_OC`/);
+  assert.match(featureDoc, /remote MCP endpoint는 사용자 `LAW_OC` 없이 `url`만으로 연결/);
+  assert.match(setupSkill, /로컬 한국 법령 검색: `LAW_OC` \+ `korean-law-mcp`/);
+  assert.match(setupSkill, /remote endpoint: 사용자 `LAW_OC` 없이 `url`만 등록/);
+
+  for (const doc of [setup, security, setupSkill]) {
+    assert.match(doc, /LAW_OC/);
+    assert.match(doc, /korean-law-mcp/);
+  }
+
+  assert.match(sources, /korean-law-mcp: https:\/\/github\.com\/chrisryugj\/korean-law-mcp/);
+  assert.match(roadmap, /한국 법령 검색 스킬 출시/);
+});
+
+test("korean-law-search skill keeps korean-law-mcp-only lookups while separating local LAW_OC setup from remote MCP fallback", () => {
+  const skillPath = path.join(repoRoot, "korean-law-search", "SKILL.md");
+  const featureDoc = read(path.join("docs", "features", "korean-law-search.md"));
+  const examplesSecrets = read(path.join("examples", "secrets.env.example"));
+  const packageJson = readJson("package.json");
+
+  assert.ok(fs.existsSync(skillPath), "expected korean-law-search/SKILL.md to exist");
+
+  const skill = read(path.join("korean-law-search", "SKILL.md"));
+  const doneSectionMatch = skill.match(/## Done when([\s\S]*?)## Notes/);
+
+  assert.match(skill, /^name: korean-law-search$/m);
+  assert.ok(doneSectionMatch, "expected korean-law-search skill to include a Done when section");
+
+  const doneSection = doneSectionMatch[1];
+
+  for (const doc of [skill, featureDoc]) {
+    assert.match(doc, /반드시 .*korean-law-mcp|korean-law-mcp.*반드시/u);
+    assert.match(doc, /npm install -g korean-law-mcp/);
+    assert.match(doc, /로컬 CLI 또는 로컬 MCP server 경로는 `LAW_OC`/);
+    assert.match(doc, /remote MCP endpoint는 사용자 `LAW_OC` 없이 `url`만으로 연결/);
+    assert.match(doc, /open\.law\.go\.kr/);
+    assert.match(doc, /search_law/);
+    assert.match(doc, /get_law_text/);
+    assert.match(doc, /search_precedents/);
+    assert.match(doc, /search_interpretations/);
+    assert.match(doc, /search_ordinance/);
+    assert.match(doc, /https:\/\/korean-law-mcp\.fly\.dev\/mcp/);
+    assert.match(doc, /MCP/i);
+    assert.match(doc, /CLI/i);
+    assert.doesNotMatch(doc, /packages\/korean-law-search/);
+    assert.doesNotMatch(doc, /python-packages\/korean-law-search/);
+  }
+
+  assert.match(doneSection, /search_interpretations/);
+  assert.match(doneSection, /search_ordinance/);
+
+  assert.doesNotMatch(
+    featureDoc,
+    /[ \t]+$/m,
+    "expected docs/features/korean-law-search.md to avoid trailing whitespace so git diff --check stays clean",
+  );
+
+  assert.match(examplesSecrets, /^LAW_OC=replace-me$/m);
+  assert.ok(
+    !packageJson.workspaces.some((workspace) => workspace.includes("korean-law")),
+    "expected no repo workspace to be added for korean-law-search",
+  );
+  assert.equal(fs.existsSync(path.join(repoRoot, "packages", "korean-law-search")), false);
+});
