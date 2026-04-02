@@ -202,6 +202,9 @@ test("used-car-price-search docs document the provider survey and SK direct surf
     assert.match(doc, /10회 이상|최소 10회/);
   }
 
+  assert.match(featureDoc, /2026-04-02/);
+  assert.match(featureDoc, /inventory 규모는 시점에 따라 변동될 수/);
+  assert.doesNotMatch(featureDoc, /총 `\d+대`/);
   assert.match(sources, /https:\/\/www\.skdirect\.co\.kr\/tb/);
   assert.match(sources, /https:\/\/www\.lotteautoauction\.net\/hp\/pub\/cmm\/viewMain\.do/);
   assert.match(sources, /https:\/\/biz\.redcap\.co\.kr\/rent\//);
