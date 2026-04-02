@@ -109,6 +109,30 @@ test("lookupUsedCarPrices returns a matched K3 result and a conservative empty r
   }
 })
 
+test("lookupUsedCarPrices reports summary and matchedCount from all matches before applying the item limit", async () => {
+  const originalFetch = global.fetch
+  global.fetch = async () => makeHtmlResponse(inventoryHtml)
+
+  try {
+    const result = await lookupUsedCarPrices("현대", { limit: 1 })
+
+    assert.equal(result.matchedCount, 2)
+    assert.equal(result.items.length, 1)
+    assert.equal(result.items[0].model, "캐스퍼")
+    assert.deepEqual(result.summary, {
+      count: 2,
+      monthlyPriceMin: 350100,
+      monthlyPriceMax: 392100,
+      buyoutPriceMin: 10466815,
+      buyoutPriceMax: 12900000,
+      mileageKmMin: 61931,
+      mileageKmMax: 64581
+    })
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
 test("fetchUsedCarInventory uses the official 타고BUY page and tolerates an empty inventory snapshot", async () => {
   const originalFetch = global.fetch
   let requestedUrl = null

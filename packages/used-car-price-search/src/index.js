@@ -47,15 +47,16 @@ async function fetchUsedCarInventory(options = {}) {
 async function lookupUsedCarPrices(query, options = {}) {
   const limit = Number(options.limit || 10)
   const inventory = await fetchUsedCarInventory(options)
-  const matches = filterCarsByQuery(inventory.items, query).slice(0, limit)
+  const allMatches = filterCarsByQuery(inventory.items, query)
+  const matches = allMatches.slice(0, limit)
 
   return {
     provider: inventory.provider,
     fetchedAt: inventory.fetchedAt,
     query: String(query || "").trim(),
     totalInventory: inventory.total,
-    matchedCount: matches.length,
-    summary: summarizeMatches(matches),
+    matchedCount: allMatches.length,
+    summary: summarizeMatches(allMatches),
     items: matches
   }
 }
