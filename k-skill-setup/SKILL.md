@@ -68,6 +68,8 @@ KSKILL_SRT_PASSWORD=replace-me
 KSKILL_KTX_ID=replace-me
 KSKILL_KTX_PASSWORD=replace-me
 LAW_OC=replace-me
+DATA_GO_KR_API_KEY=replace-me
+OPINET_API_KEY=replace-me
 AIR_KOREA_OPEN_API_KEY=replace-me
 KSKILL_PROXY_BASE_URL=https://your-proxy.example.com
 EOF
@@ -76,9 +78,14 @@ chmod 0600 ~/.config/k-skill/secrets.env
 
 유저에게 물어서 실제 값을 채운다.
 
-서울 지하철 도착정보는 hosted public route rollout 이 끝나기 전까지 `KSKILL_PROXY_BASE_URL` 을 self-host 또는 배포 확인이 끝난 proxy URL 로 채운다. 미세먼지만 hosted proxy 로 쓸 때는 이 값을 비워 둘 수 있다.
+서울 지하철 도착정보는 hosted public route rollout 이 끝나기 전까지 `KSKILL_PROXY_BASE_URL` 을 self-host 또는 배포 확인이 끝난 proxy URL 로 채운다. 미세먼지와 한강 수위는 `KSKILL_PROXY_BASE_URL` 을 비워 두면 기본 hosted path(`k-skill-proxy.nomadamas.org`)를 그대로 쓴다.
 
 한국 법령 검색은 로컬 `korean-law-mcp` 경로를 쓸 때만 `LAW_OC` 를 채운다. remote endpoint는 사용자 `LAW_OC` 없이 `url`만 등록하면 되고, 기존 경로 장애 시에는 `법망`(`https://api.beopmang.org`)을 fallback으로 안내한다.
+
+한국 부동산 실거래가 조회는 upstream `real-estate-mcp` 의 로컬/stdio/self-host 경로를 쓸 때 `DATA_GO_KR_API_KEY` 를 채운다. 2026-04-05 기준 고정 public endpoint는 확인하지 못했으므로 shared URL이 필요하면 self-host + Cloudflare Tunnel + launchd(systemd) 운영을 먼저 설명한다.
+
+근처 가장 싼 주유소 찾기는 한국석유공사 Opinet Open API 인증키인 `OPINET_API_KEY` 를 채운다. 이 값이 없으면 공식 nearby 가격 조회를 시작할 수 없으므로 비공식 가격 서비스로 자동 우회하지 않는다.
+
 
 ### Missing secret response template
 
@@ -90,6 +97,9 @@ chmod 0600 ~/.config/k-skill/secrets.env
 - KTX: `KSKILL_KTX_ID`, `KSKILL_KTX_PASSWORD`
 - 로컬 한국 법령 검색: `LAW_OC` + `korean-law-mcp`
 - 한국 법령 검색 remote endpoint: 사용자 `LAW_OC` 없이 `url`만 등록, 장애 시 `법망` fallback
+- 로컬/stdio 한국 부동산 실거래가 조회: `DATA_GO_KR_API_KEY` + `real-estate-mcp`
+- 근처 가장 싼 주유소 찾기: `OPINET_API_KEY` + `cheap-gas-nearby`
+- 공유형 한국 부동산 실거래가 조회: 운영자가 self-host + Cloudflare Tunnel + launchd/systemd 준비
 - 서울 지하철: self-host 또는 배포 확인이 끝난 `KSKILL_PROXY_BASE_URL`
 - 사용자 위치 미세먼지 조회: `KSKILL_PROXY_BASE_URL` 또는 `AIR_KOREA_OPEN_API_KEY`
 

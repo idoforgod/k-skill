@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const childProcess = require("node:child_process");
 
@@ -16,6 +17,47 @@ function readJson(relativePath) {
 
 function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function findSection(doc, heading) {
+  const escaped = escapeRegex(heading);
+  const match = doc.match(new RegExp(`${escaped}[\\s\\S]*?(?=\\n## |\\n### |$)`));
+
+  assert.ok(match, `expected section headed by "${heading}"`);
+  return match[0];
+}
+
+function assertOliveYoungCloneFallbackCommands(doc, label) {
+  assert.match(doc, /node dist\/bin\.js health/, `${label} should document the runnable local health command`);
+  assert.match(
+    doc,
+    /node dist\/bin\.js get \/api\/oliveyoung\/stores --keyword 명동 --limit 5 --json/,
+    `${label} should document the runnable local store lookup command`,
+  );
+  assert.match(
+    doc,
+    /node dist\/bin\.js get \/api\/oliveyoung\/products --keyword 선크림 --size 5 --json/,
+    `${label} should document the runnable local product lookup command`,
+  );
+  assert.match(
+    doc,
+    /node dist\/bin\.js get \/api\/oliveyoung\/inventory --keyword 선크림 --storeKeyword 명동 --size 5 --json/,
+    `${label} should document the runnable local inventory lookup command`,
+  );
+  assert.doesNotMatch(doc, /^\s*npx daiso\b/m, `${label} should not publish broken clone-local npx commands`);
+}
+
+function assertOliveYoungCloneFallbackShorthand(doc, label) {
+  assert.match(
+    doc,
+    /git clone https:\/\/github\.com\/hmmhmmhm\/daiso-mcp\.git && cd daiso-mcp && npm install && npm run build/,
+    `${label} should include a runnable shorthand that changes into the clone before install/build`,
+  );
+  assert.doesNotMatch(
+    doc,
+    /git clone https:\/\/github\.com\/hmmhmmhm\/daiso-mcp\.git && npm install && npm run build/,
+    `${label} should not publish the broken shorthand that skips cd daiso-mcp`,
+  );
 }
 
 function extractQuotedEntries(block, indent) {
@@ -179,7 +221,7 @@ test("repository docs advertise the used-car-price-search skill", () => {
   assert.match(install, /--skill used-car-price-search/);
   assert.match(
     install,
-    /npm install -g @ohah\/hwpjs kbo-game kleague-results lck-analytics toss-securities k-lotto coupang-product-search used-car-price-search korean-law-mcp/,
+    /npm install -g @ohah\/hwpjs kbo-game kleague-results lck-analytics toss-securities k-lotto coupang-product-search used-car-price-search cheap-gas-nearby korean-law-mcp/,
   );
 });
 
@@ -211,6 +253,35 @@ test("lck-analytics docs and skill credit the original author and reference repo
 
   assert.match(sources, /https:\/\/github\.com\/jerjangmin\/share\/tree\/main\/SKILL\/lck-analytics/);
 });
+
+test("repository docs advertise the korean-spell-check skill and usage constraints", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "korean-spell-check.md");
+  const skillPath = path.join(repoRoot, "korean-spell-check", "SKILL.md");
+  const featureDoc = read(path.join("docs", "features", "korean-spell-check.md"));
+  const skill = read(path.join("korean-spell-check", "SKILL.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const roadmap = read(path.join("docs", "roadmap.md"));
+
+  assert.ok(fs.existsSync(featureDocPath), "expected docs/features/korean-spell-check.md to exist");
+  assert.ok(fs.existsSync(skillPath), "expected korean-spell-check/SKILL.md to exist");
+  assert.match(readme, /\| 한국어 맞춤법 검사 \|/);
+  assert.match(readme, /\[한국어 맞춤법 검사 가이드\]\(docs\/features\/korean-spell-check\.md\)/);
+  assert.match(install, /--skill korean-spell-check/);
+  assert.match(skill, /비상업적 용도|개인이나 학생만 무료/);
+  assert.match(skill, /robots\.txt/i);
+  assert.match(skill, /청크|chunk/i);
+  assert.match(skill, /원문.*교정안.*이유/s);
+  assert.match(featureDoc, /old_speller\/results/);
+  assert.match(featureDoc, /Cloudflare|403/);
+  assert.match(featureDoc, /python3 scripts\/korean_spell_check\.py/);
+  assert.match(sources, /https:\/\/nara-speller\.co\.kr\/speller\//);
+  assert.match(sources, /https:\/\/nara-speller\.co\.kr\/old_speller\//);
+  assert.match(sources, /https:\/\/nara-speller\.co\.kr\/robots\.txt/);
+  assert.match(roadmap, /한국어 맞춤법 검사 스킬 출시/);
+});
+
 
 test("used-car-price-search docs document the provider survey and SK direct surface", () => {
   const skill = read(path.join("used-car-price-search", "SKILL.md"));
@@ -678,6 +749,77 @@ test("daiso-product-search docs record the shipped feature and official sources"
   assert.match(sources, /https:\/\/www\.daisomall\.co\.kr\/api\/pd\/pdh\/selStrPkupStck/);
 });
 
+test("repository docs advertise the olive-young-search skill across the documented surfaces", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const roadmap = read(path.join("docs", "roadmap.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "olive-young-search.md");
+
+  assert.ok(fs.existsSync(featureDocPath), "expected docs/features/olive-young-search.md to exist");
+  assert.match(readme, /\| 올리브영 검색 \|/);
+  assert.match(readme, /\[올리브영 검색 가이드\]\(docs\/features\/olive-young-search\.md\)/);
+  assert.match(install, /--skill olive-young-search/);
+  assert.match(install, /npm install -g .* daiso/);
+  assert.match(roadmap, /올리브영 검색 스킬 출시/);
+  assert.match(sources, /https:\/\/github\.com\/hmmhmmhm\/daiso-mcp/);
+  assert.match(sources, /https:\/\/www\.npmjs\.com\/package\/daiso/);
+  assert.match(sources, /https:\/\/mcp\.aka\.page\/api\/oliveyoung\/stores/);
+  assert.match(sources, /https:\/\/mcp\.aka\.page\/api\/oliveyoung\/products/);
+  assert.match(sources, /https:\/\/mcp\.aka\.page\/api\/oliveyoung\/inventory/);
+});
+
+test("olive-young install docs warn about intermittent public endpoint failures and direct users to retry or clone fallback", () => {
+  const install = read(path.join("docs", "install.md"));
+  const quickstart = findSection(install, "### `olive-young-search` upstream CLI quickstart");
+
+  assert.match(install, /olive-young-search/);
+  assert.match(install, /5xx\/503/);
+  assert.match(install, /재시도|retry/i);
+  assert.match(install, /clone fallback|git clone https:\/\/github\.com\/hmmhmmhm\/daiso-mcp\.git/i);
+  assertOliveYoungCloneFallbackShorthand(quickstart, "olive-young install quickstart");
+  assertOliveYoungCloneFallbackCommands(quickstart, "olive-young install quickstart");
+});
+
+test("olive-young-search skill documents the upstream daiso CLI flow for stores, products, and inventory", () => {
+  const skillPath = path.join(repoRoot, "olive-young-search", "SKILL.md");
+  const featureDoc = read(path.join("docs", "features", "olive-young-search.md"));
+
+  assert.ok(fs.existsSync(skillPath), "expected olive-young-search/SKILL.md to exist");
+
+  const skill = read(path.join("olive-young-search", "SKILL.md"));
+  const featureTop = findSection(featureDoc, "## 가장 중요한 규칙");
+  const featureFallback = findSection(featureDoc, "## 원본 저장소 clone fallback");
+  const skillFallback = findSection(skill, "## Fallback: clone the original repository and run the same CLI locally");
+
+  assert.match(skill, /^name: olive-young-search$/m);
+  assert.match(skill, /^description: .*올리브영.*매장.*상품.*재고.*$/m);
+
+  for (const doc of [skill, featureDoc]) {
+    assert.match(doc, /hmmhmmhm\/daiso-mcp/);
+    assert.match(doc, /https:\/\/github\.com\/hmmhmmhm\/daiso-mcp/);
+    assert.match(doc, /npm install -g daiso|npx --yes daiso|npx daiso/);
+    assert.match(doc, /git clone https:\/\/github\.com\/hmmhmmhm\/daiso-mcp\.git/);
+    assert.match(doc, /npm install/);
+    assert.match(doc, /npm run build/);
+    assert.match(doc, /MCP 서버를 .*직접 설치.*않고.*CLI/u);
+    assert.match(doc, /매장 검색/);
+    assert.match(doc, /상품 검색/);
+    assert.match(doc, /재고 확인/);
+    assert.match(doc, /\/api\/oliveyoung\/stores/);
+    assert.match(doc, /\/api\/oliveyoung\/products/);
+    assert.match(doc, /\/api\/oliveyoung\/inventory/);
+    assert.match(doc, /vendoring 하지 않/);
+  }
+
+  assertOliveYoungCloneFallbackShorthand(featureTop, "olive-young feature guide shorthand");
+
+  for (const fallbackDoc of [featureFallback, skillFallback]) {
+    assertOliveYoungCloneFallbackCommands(fallbackDoc, "olive-young clone fallback docs");
+  }
+});
+
+
 test("repository docs advertise the coupang-product-search skill", () => {
   const readme = read("README.md");
   const install = read(path.join("docs", "install.md"));
@@ -1049,7 +1191,7 @@ test("package-lock captures the toss-securities workspace metadata for npm ci", 
     resolved: "packages/toss-securities",
     link: true,
   });
-  assert.equal(packageLock.packages["packages/toss-securities"].version, "0.1.0");
+  assert.equal(packageLock.packages["packages/toss-securities"].version, "0.2.0");
   assert.equal(packageLock.packages["packages/toss-securities"].license, "MIT");
   assert.equal(packageLock.packages["packages/toss-securities"].engines.node, ">=18");
 });
@@ -1144,4 +1286,255 @@ test("korean-law-search skill keeps korean-law-mcp-first guidance while document
     "expected no repo workspace to be added for korean-law-search",
   );
   assert.equal(fs.existsSync(path.join(repoRoot, "packages", "korean-law-search")), false);
+});
+
+test("repository docs advertise the joseon-sillok-search skill and helper", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "joseon-sillok-search.md");
+  const featureDoc = read(path.join("docs", "features", "joseon-sillok-search.md"));
+  const skillPath = path.join(repoRoot, "joseon-sillok-search", "SKILL.md");
+  const skill = read(path.join("joseon-sillok-search", "SKILL.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const roadmap = read(path.join("docs", "roadmap.md"));
+
+  assert.ok(fs.existsSync(featureDocPath), "expected docs/features/joseon-sillok-search.md to exist");
+  assert.ok(fs.existsSync(skillPath), "expected joseon-sillok-search/SKILL.md to exist");
+  assert.match(readme, /\| 조선왕조실록 검색 \|/);
+  assert.match(readme, /\[조선왕조실록 검색 가이드\]\(docs\/features\/joseon-sillok-search\.md\)/);
+  assert.match(install, /--skill joseon-sillok-search/);
+  assert.match(install, /python3 scripts\/sillok_search\.py --query "훈민정음" --king 세종 --year 1443/);
+  assert.match(skill, /sillok\.history\.go\.kr/);
+  assert.match(skill, /--king/);
+  assert.match(skill, /--year/);
+  assert.match(featureDoc, /python3 scripts\/sillok_search\.py --query "훈민정음"/);
+  assert.match(featureDoc, /1443/);
+  assert.match(featureDoc, /kda_12512030_002/);
+  assert.match(sources, /https:\/\/sillok\.history\.go\.kr/);
+  assert.match(sources, /https:\/\/sillok\.history\.go\.kr\/search\/searchResultList\.do/);
+  assert.match(roadmap, /조선왕조실록 검색 스킬 출시/);
+});
+
+test("joseon-sillok-search install payload includes the documented helper command", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "joseon-sillok-"));
+  const installedSkillPath = path.join(tempRoot, "joseon-sillok-search");
+  const bundledHelperPath = path.join(installedSkillPath, "scripts", "sillok_search.py");
+
+  try {
+    fs.cpSync(path.join(repoRoot, "joseon-sillok-search"), installedSkillPath, { recursive: true });
+
+    assert.ok(fs.existsSync(bundledHelperPath), "expected joseon-sillok-search/scripts/sillok_search.py to exist");
+
+    const helpText = childProcess.execFileSync("python3", ["scripts/sillok_search.py", "--help"], {
+      cwd: installedSkillPath,
+      encoding: "utf8",
+    });
+
+    assert.match(helpText, /Search Joseon Sillok records from sillok\.history\.go\.kr/);
+    assert.match(helpText, /--query/);
+    assert.match(helpText, /--king/);
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("repository docs advertise the real-estate-search skill and upstream self-host guidance", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const setup = read(path.join("docs", "setup.md"));
+  const security = read(path.join("docs", "security-and-secrets.md"));
+  const setupSkill = read(path.join("k-skill-setup", "SKILL.md"));
+  const examplesSecrets = read(path.join("examples", "secrets.env.example"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "real-estate-search.md");
+  const featureDoc = read(path.join("docs", "features", "real-estate-search.md"));
+  const skillPath = path.join(repoRoot, "real-estate-search", "SKILL.md");
+  const skill = read(path.join("real-estate-search", "SKILL.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const roadmap = read(path.join("docs", "roadmap.md"));
+  const packageJson = readJson("package.json");
+
+  assert.ok(fs.existsSync(featureDocPath), "expected docs/features/real-estate-search.md to exist");
+  assert.ok(fs.existsSync(skillPath), "expected real-estate-search/SKILL.md to exist");
+
+  assert.match(readme, /\| 한국 부동산 실거래가 조회 \|/);
+  assert.match(readme, /\[한국 부동산 실거래가 조회 가이드\]\(docs\/features\/real-estate-search\.md\)/);
+  assert.match(install, /--skill real-estate-search/);
+
+  for (const doc of [skill, featureDoc]) {
+    assert.match(doc, /https:\/\/github\.com\/tae0y\/real-estate-mcp\/tree\/main/);
+    assert.match(doc, /DATA_GO_KR_API_KEY/);
+    assert.match(doc, /get_apartment_trades/);
+    assert.match(doc, /get_apartment_rent/);
+    assert.match(doc, /get_region_code/);
+    assert.match(doc, /Codex CLI|Claude Desktop/);
+    assert.match(doc, /Cloudflare Tunnel/i);
+    assert.match(doc, /launchd/i);
+    assert.match(doc, /uv run/);
+    assert.match(doc, /cloudflared tunnel/i);
+    assert.doesNotMatch(doc, /packages\/real-estate-search/);
+    assert.doesNotMatch(doc, /python-packages\/real-estate-search/);
+  }
+
+  for (const doc of [install]) {
+    assert.match(doc, /https:\/\/github\.com\/tae0y\/real-estate-mcp\/tree\/main/);
+    assert.match(doc, /DATA_GO_KR_API_KEY/);
+    assert.match(doc, /Codex CLI/);
+    assert.match(doc, /Cloudflare Tunnel/i);
+    assert.match(doc, /launchd/i);
+    assert.match(doc, /uv run/);
+    assert.match(doc, /cloudflared tunnel/i);
+  }
+
+  for (const doc of [setup, security, setupSkill]) {
+    assert.match(doc, /DATA_GO_KR_API_KEY/);
+    assert.match(doc, /real-estate-mcp/);
+  }
+
+  assert.match(examplesSecrets, /^DATA_GO_KR_API_KEY=replace-me$/m);
+  assert.match(sources, /real-estate-mcp: https:\/\/github\.com\/tae0y\/real-estate-mcp\/tree\/main/);
+  assert.match(roadmap, /한국 부동산 실거래가 조회 스킬 출시/);
+  assert.ok(
+    !packageJson.workspaces.some((workspace) => workspace.includes("real-estate-search")),
+    "expected no repo workspace to be added for real-estate-search",
+  );
+  assert.equal(fs.existsSync(path.join(repoRoot, "packages", "real-estate-search")), false);
+});
+
+test("real-estate-search docs keep the upstream Onbid WIP caveat and avoid launchd daemonize loops", () => {
+  const featureDoc = read(path.join("docs", "features", "real-estate-search.md"));
+  const installDoc = read(path.join("docs", "install.md"));
+  const skill = read(path.join("real-estate-search", "SKILL.md"));
+
+  for (const doc of [skill, featureDoc]) {
+    assert.match(doc, /get_public_auction_items/);
+    assert.match(doc, /get_public_auction_item_detail/);
+    assert.match(doc, /WIP|작업 중|준비 중/);
+  }
+
+  const skillLaunchdSection = skill.match(/##\s+.*launchd[\s\S]*?(?=\n##\s+|\n#\s+|$)/i)?.[0];
+  const featureLaunchdSection = featureDoc.match(/###+\s+.*launchd[\s\S]*?(?=\n##\s+|\n#\s+|$)/i)?.[0];
+
+  assert.ok(skillLaunchdSection, "expected skill launchd section");
+  assert.ok(featureLaunchdSection, "expected feature guide launchd section");
+
+  for (const section of [skillLaunchdSection, featureLaunchdSection]) {
+    assert.doesNotMatch(section, /com\.kskill\.real-estate-mcp\.server/);
+    assert.doesNotMatch(section, /launchctl .*real-estate-mcp\.server/i);
+    assert.match(section, /restart:\s*unless-stopped|Docker (Desktop|Engine).*재기동|Docker.*자동 재시작/i);
+    assert.match(section, /cloudflared[\s\S]*tunnel[\s\S]*run[\s\S]*real-estate-mcp/i);
+  }
+
+  assert.doesNotMatch(installDoc, /launchd\s*로\s*서버\/터널을?\s*자동 실행/i);
+  assert.match(installDoc, /launchd[\s\S]*(Cloudflare Tunnel|터널).*(만|전용)/i);
+  assert.match(
+    installDoc,
+    /restart:\s*unless-stopped|Docker (Desktop|Engine).*재기동|Docker.*자동 재시작/i,
+  );
+});
+
+test("repository docs advertise the shipped korean-spell-check helper assets", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "korean-spell-check.md");
+  const helperPath = path.join(repoRoot, "scripts", "korean_spell_check.py");
+
+  assert.equal(fs.existsSync(featureDocPath), true);
+  assert.equal(fs.existsSync(helperPath), true);
+  assert.match(readme, /\[한국어 맞춤법 검사 가이드\]\(docs\/features\/korean-spell-check\.md\)/);
+  assert.match(install, /python3 scripts\/korean_spell_check\.py/);
+});
+
+test("repository docs advertise the cheap-gas-nearby skill and Opinet key requirements", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const setup = read(path.join("docs", "setup.md"));
+  const security = read(path.join("docs", "security-and-secrets.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const roadmap = read(path.join("docs", "roadmap.md"));
+  const setupSkill = read(path.join("k-skill-setup", "SKILL.md"));
+  const examplesSecrets = read(path.join("examples", "secrets.env.example"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "cheap-gas-nearby.md");
+  const skillPath = path.join(repoRoot, "cheap-gas-nearby", "SKILL.md");
+
+  assert.equal(fs.existsSync(featureDocPath), true);
+  assert.equal(fs.existsSync(skillPath), true);
+  assert.match(readme, /\| 근처 가장 싼 주유소 찾기 \|/);
+  assert.match(readme, /\[근처 가장 싼 주유소 찾기 가이드\]\(docs\/features\/cheap-gas-nearby\.md\)/);
+  assert.match(install, /--skill cheap-gas-nearby/);
+
+  for (const doc of [setup, security, setupSkill]) {
+    assert.match(doc, /OPINET_API_KEY/);
+    assert.match(doc, /오피넷|Opinet/);
+  }
+
+  assert.match(examplesSecrets, /^OPINET_API_KEY=replace-me$/m);
+  assert.match(sources, /https:\/\/www\.opinet\.co\.kr\/user\/custapi\/openApiInfo\.do/);
+  assert.match(sources, /https:\/\/www\.opinet\.co\.kr\/api\/aroundAll\.do/);
+  assert.match(sources, /https:\/\/www\.opinet\.co\.kr\/api\/detailById\.do/);
+  assert.match(roadmap, /근처 가장 싼 주유소 찾기 스킬 출시/);
+});
+
+test("cheap-gas-nearby skill docs require location-first prompts and official Opinet surfaces", () => {
+  const skill = read(path.join("cheap-gas-nearby", "SKILL.md"));
+  const featureDoc = read(path.join("docs", "features", "cheap-gas-nearby.md"));
+
+  for (const doc of [skill, featureDoc]) {
+    assert.match(doc, /현재 위치를 알려주세요/);
+    assert.match(doc, /OPINET_API_KEY/);
+    assert.match(doc, /aroundAll\.do/);
+    assert.match(doc, /detailById\.do/);
+    assert.match(doc, /areaCode\.do/);
+    assert.match(doc, /휘발유|경유/);
+    assert.match(doc, /KATEC/);
+    assert.match(doc, /카카오맵|Kakao Map/);
+  }
+});
+
+test("repository docs advertise the han-river-water-level skill and rollout-pending proxy workflow", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const setup = read(path.join("docs", "setup.md"));
+  const security = read(path.join("docs", "security-and-secrets.md"));
+  const proxyDoc = read(path.join("docs", "features", "k-skill-proxy.md"));
+  const proxyReadme = read(path.join("packages", "k-skill-proxy", "README.md"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "han-river-water-level.md");
+  const featureDoc = read(path.join("docs", "features", "han-river-water-level.md"));
+  const skillPath = path.join(repoRoot, "han-river-water-level", "SKILL.md");
+  const skill = read(path.join("han-river-water-level", "SKILL.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const roadmap = read(path.join("docs", "roadmap.md"));
+
+  assert.ok(fs.existsSync(featureDocPath), "expected docs/features/han-river-water-level.md to exist");
+  assert.ok(fs.existsSync(skillPath), "expected han-river-water-level/SKILL.md to exist");
+
+  assert.match(readme, /\| 한강 수위 정보 조회 \|/);
+  assert.match(readme, /\[한강 수위 정보 가이드\]\(docs\/features\/han-river-water-level\.md\)/);
+  assert.match(install, /--skill han-river-water-level/);
+
+  for (const doc of [skill, featureDoc]) {
+    assert.match(doc, /\/v1\/han-river\/water-level/);
+    assert.match(doc, /stationName|station_code|stationCode/);
+    assert.match(doc, /수위|유량/);
+    assert.match(doc, /candidate_stations|ambiguous_station/);
+    assert.match(doc, /KSKILL_PROXY_BASE_URL/);
+  }
+
+  assert.match(featureDoc, /HRFCO_OPEN_API_KEY/);
+
+  assert.match(skill, /기본적으로 `https:\/\/k-skill-proxy\.nomadamas\.org\/v1\/han-river\/water-level`/);
+  assert.doesNotMatch(featureDoc, /기본 hosted 조회:/);
+
+  for (const doc of [proxyDoc, proxyReadme]) {
+    assert.match(doc, /\/v1\/han-river\/water-level/);
+    assert.match(doc, /HRFCO_OPEN_API_KEY/);
+    assert.match(doc, /waterlevel\/info\.json/);
+    assert.match(doc, /waterlevel\/list\/10M/);
+  }
+
+  assert.match(setup, /한강 수위 정보 조회 \| 사용자 시크릿 불필요/);
+  assert.match(setup, /한강 수위는 .*KSKILL_PROXY_BASE_URL.*기본 hosted path/);
+  assert.match(security, /KSKILL_PROXY_BASE_URL.*서울 지하철.*route가 실제 배포된 proxy URL/);
+  assert.match(sources, /hrfco\.go\.kr\/web\/openapiPage\/reference\.do/);
+  assert.match(sources, /api\.hrfco\.go\.kr/);
+  assert.match(roadmap, /한강 수위 정보 조회 스킬 출시/);
 });
