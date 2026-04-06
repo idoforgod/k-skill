@@ -55,6 +55,7 @@ npx --yes skills add <owner/repo> \
   --skill real-estate-search \
   --skill korean-stock-search \
   --skill joseon-sillok-search \
+  --skill korea-weather \
   --skill cheap-gas-nearby \
   --skill fine-dust-location \
   --skill han-river-water-level \
@@ -82,6 +83,7 @@ npx --yes skills add <owner/repo> \
   --skill cheap-gas-nearby \
   --skill joseon-sillok-search \
   --skill seoul-subway-arrival \
+  --skill korea-weather \
   --skill fine-dust-location
 ```
 
@@ -271,6 +273,7 @@ python3 scripts/korean_spell_check.py --text "아버지가방에들어가신다.
 - `srt-booking`
 - `ktx-booking`
 - `seoul-subway-arrival`
+- `korea-weather`
 - `fine-dust-location`
 - `korean-law-search`
 - `real-estate-search`
