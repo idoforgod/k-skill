@@ -3,6 +3,7 @@ const path = require("node:path")
 
 const {
   HIPASS_ENDPOINTS,
+  USAGE_HISTORY_INIT_URL,
   buildUsageHistoryQuery,
   inspectHipassPage,
   parseUsageHistoryList
@@ -74,7 +75,7 @@ async function getAutomationPage(browser) {
 }
 
 async function gotoUsageHistoryPage(page) {
-  await page.goto(HIPASS_ENDPOINTS.usageHistoryInit, { waitUntil: "domcontentloaded" })
+  await page.goto(USAGE_HISTORY_INIT_URL, { waitUntil: "domcontentloaded" })
   const info = inspectHipassPage(await page.content())
 
   if (info.reloginRequired) {
@@ -142,65 +143,81 @@ async function waitForUsageHistoryFrame(page) {
   throw new Error("Timed out waiting for the usage-history iframe (if_main_post) to load")
 }
 
+async function closeBrowserConnection(browser) {
+  if (!browser || typeof browser.close !== "function") {
+    return
+  }
+
+  await browser.close().catch(() => {})
+}
+
 async function listUsageHistory(options = {}) {
   const browser = await connectToChrome(options)
-  const { page } = await getAutomationPage(browser)
-  await gotoUsageHistoryPage(page)
-  const query = buildUsageHistoryQuery(options)
-  const { html } = await submitUsageHistorySearch(page, query)
-  return {
-    query,
-    ...parseUsageHistoryList(html)
+  try {
+    const { page } = await getAutomationPage(browser)
+    await gotoUsageHistoryPage(page)
+    const query = buildUsageHistoryQuery(options)
+    const { html } = await submitUsageHistorySearch(page, query)
+    return {
+      query,
+      ...parseUsageHistoryList(html)
+    }
+  } finally {
+    await closeBrowserConnection(browser)
   }
 }
 
 async function openReceiptPopup(options = {}) {
   const browser = await connectToChrome(options)
-  const { page, context } = await getAutomationPage(browser)
-  await gotoUsageHistoryPage(page)
-  const query = buildUsageHistoryQuery(options)
-  const { frame, html } = await submitUsageHistorySearch(page, query)
-  const parsed = parseUsageHistoryList(html)
-  const rowIndex = Number(options.rowIndex || 1)
-  const row = parsed.rows[rowIndex - 1]
+  try {
+    const { page, context } = await getAutomationPage(browser)
+    await gotoUsageHistoryPage(page)
+    const query = buildUsageHistoryQuery(options)
+    const { frame, html } = await submitUsageHistorySearch(page, query)
+    const parsed = parseUsageHistoryList(html)
+    const rowIndex = Number(options.rowIndex || 1)
+    const row = parsed.rows[rowIndex - 1]
 
-  if (!row) {
-    throw new Error(`Could not find usage-history row ${rowIndex}`)
-  }
-
-  const popupPromise = context.waitForEvent("page", { timeout: 5000 }).catch(() => null)
-  await frame.locator("table tbody tr").nth(rowIndex - 1).evaluate((element) => {
-    const clickable = [...element.querySelectorAll('a,button,input[type="button"],input[type="submit"]')].find((candidate) => {
-      const label = (candidate.innerText || candidate.textContent || candidate.value || "").trim()
-      return /영수증|출력/.test(label)
-    })
-
-    if (!clickable) {
-      throw new Error("Could not find a receipt button/link in the selected usage-history row")
+    if (!row) {
+      throw new Error(`Could not find usage-history row ${rowIndex}`)
     }
 
-    clickable.click()
-  })
+    const popupPromise = context.waitForEvent("page", { timeout: 5000 }).catch(() => null)
+    await frame.locator("table tbody tr").nth(rowIndex - 1).evaluate((element) => {
+      const clickable = [...element.querySelectorAll('a,button,input[type="button"],input[type="submit"]')].find((candidate) => {
+        const label = (candidate.innerText || candidate.textContent || candidate.value || "").trim()
+        return /영수증|출력/.test(label)
+      })
 
-  const popup = await popupPromise
-  if (!popup) {
+      if (!clickable) {
+        throw new Error("Could not find a receipt button/link in the selected usage-history row")
+      }
+
+      clickable.click()
+    })
+
+    const popup = await popupPromise
+    if (!popup) {
+      return {
+        query,
+        entry: row,
+        popupUrl: null,
+        popupTitle: null,
+        popupCaptured: false
+      }
+    }
+
+    await popup.waitForLoadState("domcontentloaded").catch(() => {})
+
     return {
       query,
       entry: row,
-      popupUrl: null,
-      popupTitle: null,
-      popupCaptured: false
+      popupUrl: popup.url(),
+      popupTitle: await popup.title().catch(() => null),
+      popupCaptured: true
     }
-  }
-
-  await popup.waitForLoadState("domcontentloaded").catch(() => {})
-
-  return {
-    query,
-    entry: row,
-    popupUrl: popup.url(),
-    popupTitle: await popup.title().catch(() => null),
-    popupCaptured: true
+  } finally {
+    await closeBrowserConnection(browser)
   }
 }
 
