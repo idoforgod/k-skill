@@ -71,6 +71,10 @@
 - 조선왕조실록 메인: https://sillok.history.go.kr
 - 조선왕조실록 검색 결과: https://sillok.history.go.kr/search/searchResultList.do
 - 조선왕조실록 기사 상세: https://sillok.history.go.kr/id/kda_12512030_002
+- KIPRIS Plus 특허/실용신안 API 목록: https://plus.kipris.or.kr/portal/data/service/List.do?subTab=SC001&entYn=N&menuNo=200100
+- 공공데이터포털 특허/실용신안 정보 검색 서비스: https://www.data.go.kr/data/15058788/openapi.do
+- KIPRIS Plus 특허/실용신안 검색 endpoint: https://plus.kipris.or.kr/kipo-api/kipi/patUtiModInfoSearchSevice/getWordSearch
+- KIPRIS Plus 특허/실용신안 서지상세 endpoint: https://plus.kipris.or.kr/kipo-api/kipi/patUtiModInfoSearchSevice/getBibliographyDetailInfoSearch
 - Opinet 오픈 API 안내: https://www.opinet.co.kr/user/custapi/openApiInfo.do
 - Opinet 반경 내 주유소 API: https://www.opinet.co.kr/api/aroundAll.do
 - Opinet 주유소 상세정보 API: https://www.opinet.co.kr/api/detailById.do
