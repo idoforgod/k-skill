@@ -282,6 +282,43 @@ test("repository docs advertise the korean-spell-check skill and usage constrain
   assert.match(roadmap, /한국어 맞춤법 검사 스킬 출시/);
 });
 
+test("repository docs advertise the MFDS public-health skills and mandatory symptom interview", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const drugSkillPath = path.join(repoRoot, "mfds-drug-safety", "SKILL.md");
+  const foodSkillPath = path.join(repoRoot, "mfds-food-safety", "SKILL.md");
+  const drugFeaturePath = path.join(repoRoot, "docs", "features", "mfds-drug-safety.md");
+  const foodFeaturePath = path.join(repoRoot, "docs", "features", "mfds-food-safety.md");
+
+  assert.ok(fs.existsSync(drugSkillPath), "expected mfds-drug-safety/SKILL.md to exist");
+  assert.ok(fs.existsSync(foodSkillPath), "expected mfds-food-safety/SKILL.md to exist");
+  assert.ok(fs.existsSync(drugFeaturePath), "expected docs/features/mfds-drug-safety.md to exist");
+  assert.ok(fs.existsSync(foodFeaturePath), "expected docs/features/mfds-food-safety.md to exist");
+  assert.match(readme, /\| 의약품 안전 체크 \|/);
+  assert.match(readme, /\| 식품 안전 체크 \|/);
+  assert.match(install, /--skill mfds-drug-safety/);
+  assert.match(install, /--skill mfds-food-safety/);
+  assert.match(sources, /15075057\/openapi\.do/);
+  assert.match(sources, /15097208\/openapi\.do/);
+  assert.match(sources, /15056516\/openapi\.do/);
+  assert.match(sources, /15074318\/openapi\.do/);
+  assert.match(sources, /foodsafetykorea\.go\.kr\/api\/openApiInfo\.do.*svc_no=I0490/);
+
+  for (const relativePath of [
+    path.join("mfds-drug-safety", "SKILL.md"),
+    path.join("mfds-food-safety", "SKILL.md"),
+    path.join("docs", "features", "mfds-drug-safety.md"),
+    path.join("docs", "features", "mfds-food-safety.md")
+  ]) {
+    const doc = read(relativePath);
+
+    assert.match(doc, /인터뷰|되묻/);
+    assert.match(doc, /호흡곤란/);
+    assert.match(doc, /직접 진단|진단\/처방|진단\)이나/);
+    assert.match(doc, /119|응급실/);
+  }
+});
 test("used-car-price-search docs document the provider survey and SK direct surface", () => {
   const skill = read(path.join("used-car-price-search", "SKILL.md"));
   const featureDoc = read(path.join("docs", "features", "used-car-price-search.md"));
@@ -1932,4 +1969,61 @@ test("repository docs advertise the han-river-water-level skill and rollout-pend
   assert.match(sources, /hrfco\.go\.kr\/web\/openapiPage\/reference\.do/);
   assert.match(sources, /api\.hrfco\.go\.kr/);
   assert.match(roadmap, /한강 수위 정보 조회 스킬 출시/);
+});
+
+
+test("repository docs advertise the MFDS drug and food safety skills", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const sources = read(path.join("docs", "sources.md"));
+  const drugFeatureDocPath = path.join(repoRoot, "docs", "features", "mfds-drug-safety.md");
+  const foodFeatureDocPath = path.join(repoRoot, "docs", "features", "mfds-food-safety.md");
+  const drugSkillPath = path.join(repoRoot, "mfds-drug-safety", "SKILL.md");
+  const foodSkillPath = path.join(repoRoot, "mfds-food-safety", "SKILL.md");
+
+  assert.equal(fs.existsSync(drugFeatureDocPath), true);
+  assert.equal(fs.existsSync(foodFeatureDocPath), true);
+  assert.equal(fs.existsSync(drugSkillPath), true);
+  assert.equal(fs.existsSync(foodSkillPath), true);
+  assert.match(readme, /\| 의약품 안전 체크 \|/);
+  assert.match(readme, /\| 식품 안전 체크 \|/);
+  assert.match(readme, /\[의약품 안전 체크 가이드\]\(docs\/features\/mfds-drug-safety\.md\)/);
+  assert.match(readme, /\[식품 안전 체크 가이드\]\(docs\/features\/mfds-food-safety\.md\)/);
+  assert.match(install, /--skill mfds-drug-safety/);
+  assert.match(install, /--skill mfds-food-safety/);
+  assert.match(sources, /15075057\/openapi\.do/);
+  assert.match(sources, /15097208\/openapi\.do/);
+  assert.match(sources, /15056516\/openapi\.do/);
+  assert.match(sources, /foodsafetykorea\.go\.kr\/api\/openApiInfo\.do/);
+});
+
+test("MFDS public-health skill docs require interview-first safety flow and official endpoints", () => {
+  const drugSkill = read(path.join("mfds-drug-safety", "SKILL.md"));
+  const foodSkill = read(path.join("mfds-food-safety", "SKILL.md"));
+  const drugFeatureDoc = read(path.join("docs", "features", "mfds-drug-safety.md"));
+  const foodFeatureDoc = read(path.join("docs", "features", "mfds-food-safety.md"));
+  const sources = read(path.join("docs", "sources.md"));
+
+  for (const doc of [drugSkill, drugFeatureDoc]) {
+    assert.match(doc, /증상.*바로 단정하지 말고.*먼저 되묻/);
+    assert.match(doc, /호흡곤란|의식저하|심한 발진/);
+    assert.match(doc, /DrbEasyDrugInfoService\/getDrbEasyDrugList/);
+    assert.match(doc, /SafeStadDrugService\/getSafeStadDrugInq/);
+    assert.match(doc, /DATA_GO_KR_API_KEY/);
+    assert.match(doc, /python3 scripts\/mfds_drug_safety\.py/);
+  }
+
+  for (const doc of [foodSkill, foodFeatureDoc]) {
+    assert.match(doc, /증상.*바로 단정하지 말고.*먼저 되묻/);
+    assert.match(doc, /혈변|탈수|호흡곤란/);
+    assert.match(doc, /PrsecImproptFoodInfoService03\/getPrsecImproptFoodList01/);
+    assert.match(doc, /I0490/);
+    assert.match(doc, /DATA_GO_KR_API_KEY/);
+    assert.match(doc, /python3 scripts\/mfds_food_safety\.py/);
+    assert.match(doc, /https:\/\/openapi\.foodsafetykorea\.go\.kr\/api\/sample\/I0490\/json\/1\/5/);
+    assert.doesNotMatch(doc, /http:\/\/openapi\.foodsafetykorea\.go\.kr/);
+  }
+
+  assert.match(sources, /https:\/\/openapi\.foodsafetykorea\.go\.kr\/api\/sample\/I0490\/json\/1\/5/);
+  assert.doesNotMatch(sources, /http:\/\/openapi\.foodsafetykorea\.go\.kr/);
 });

@@ -28,6 +28,15 @@
 - korean-law-mcp: https://github.com/chrisryugj/korean-law-mcp
 - real-estate-mcp: https://github.com/tae0y/real-estate-mcp/tree/main
 - korea-stock-mcp: https://github.com/jjlabsio/korea-stock-mcp
+- 공공데이터포털 의약품개요정보(e약은요): https://www.data.go.kr/data/15075057/openapi.do
+- 식약처 e약은요 endpoint: https://apis.data.go.kr/1471000/DrbEasyDrugInfoService/getDrbEasyDrugList
+- 공공데이터포털 안전상비의약품 정보: https://www.data.go.kr/data/15097208/openapi.do
+- 식약처 안전상비의약품 endpoint: https://apis.data.go.kr/1471000/SafeStadDrugService/getSafeStadDrugInq
+- 공공데이터포털 검사 부적합 식품정보: https://www.data.go.kr/data/15056516/openapi.do
+- 식약처 부적합 식품 endpoint: https://apis.data.go.kr/1471000/PrsecImproptFoodInfoService03/getPrsecImproptFoodList01
+- 공공데이터포털 식품 회수·판매중지 정보: https://www.data.go.kr/data/15074318/openapi.do
+- 식품안전나라 I0490 안내: https://www.foodsafetykorea.go.kr/api/openApiInfo.do?menu_grp=MENU_GRP31&menu_no=661&show_cnt=10&start_idx=1&svc_no=I0490&svc_type_cd=API_TYPE06
+- 식품안전나라 I0490 sample: https://openapi.foodsafetykorea.go.kr/api/sample/I0490/json/1/5
 - KRX OPEN API 메인: https://openapi.krx.co.kr/contents/OPP/MAIN/main/index.cmd
 - KRX 종목 기본정보 API (KOSPI): http://data-dbg.krx.co.kr/svc/apis/sto/stk_isu_base_info
 - KRX 일별 매매정보 API (KOSPI): http://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd
