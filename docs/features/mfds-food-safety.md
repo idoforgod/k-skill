@@ -23,7 +23,7 @@
 - 부적합 식품 endpoint: `https://apis.data.go.kr/1471000/PrsecImproptFoodInfoService03/getPrsecImproptFoodList01`
 - 식품안전나라 회수·판매중지 문서: `https://www.data.go.kr/data/15074318/openapi.do`
 - 식품안전나라 API 안내: `https://www.foodsafetykorea.go.kr/api/openApiInfo.do?menu_grp=MENU_GRP31&menu_no=661&show_cnt=10&start_idx=1&svc_no=I0490&svc_type_cd=API_TYPE06`
-- 식품안전나라 회수 sample: `http://openapi.foodsafetykorea.go.kr/api/sample/I0490/json/1/5`
+- 식품안전나라 회수 sample: `https://openapi.foodsafetykorea.go.kr/api/sample/I0490/json/1/5`
 
 ## 권장 인터뷰 질문
 

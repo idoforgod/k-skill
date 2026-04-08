@@ -1,6 +1,8 @@
 import unittest
 
 from scripts.mfds_food_safety import (
+    FOOD_RECALL_LIVE_URL,
+    FOOD_RECALL_SAMPLE_URL,
     build_food_interview,
     filter_food_items,
     normalize_food_recall_row,
@@ -84,6 +86,12 @@ class FoodServiceKeyResolutionTest(unittest.TestCase):
 
         self.assertEqual(resolve_data_go_service_key("abc", env={}), "abc")
         self.assertEqual(resolve_data_go_service_key(None, env={"DATA_GO_KR_API_KEY": "xyz"}), "xyz")
+
+
+class FoodRecallTransportTest(unittest.TestCase):
+    def test_food_recall_urls_use_https(self):
+        self.assertTrue(FOOD_RECALL_SAMPLE_URL.startswith("https://"))
+        self.assertTrue(FOOD_RECALL_LIVE_URL.startswith("https://"))
 
 
 if __name__ == "__main__":

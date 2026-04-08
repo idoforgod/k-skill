@@ -1914,6 +1914,7 @@ test("MFDS public-health skill docs require interview-first safety flow and offi
   const foodSkill = read(path.join("mfds-food-safety", "SKILL.md"));
   const drugFeatureDoc = read(path.join("docs", "features", "mfds-drug-safety.md"));
   const foodFeatureDoc = read(path.join("docs", "features", "mfds-food-safety.md"));
+  const sources = read(path.join("docs", "sources.md"));
 
   for (const doc of [drugSkill, drugFeatureDoc]) {
     assert.match(doc, /증상.*바로 단정하지 말고.*먼저 되묻/);
@@ -1931,5 +1932,10 @@ test("MFDS public-health skill docs require interview-first safety flow and offi
     assert.match(doc, /I0490/);
     assert.match(doc, /DATA_GO_KR_API_KEY/);
     assert.match(doc, /python3 scripts\/mfds_food_safety\.py/);
+    assert.match(doc, /https:\/\/openapi\.foodsafetykorea\.go\.kr\/api\/sample\/I0490\/json\/1\/5/);
+    assert.doesNotMatch(doc, /http:\/\/openapi\.foodsafetykorea\.go\.kr/);
   }
+
+  assert.match(sources, /https:\/\/openapi\.foodsafetykorea\.go\.kr\/api\/sample\/I0490\/json\/1\/5/);
+  assert.doesNotMatch(sources, /http:\/\/openapi\.foodsafetykorea\.go\.kr/);
 });

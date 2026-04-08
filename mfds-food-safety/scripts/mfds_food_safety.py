@@ -12,8 +12,8 @@ from html import unescape
 from typing import Any
 
 IMPROPER_FOOD_ENDPOINT = "https://apis.data.go.kr/1471000/PrsecImproptFoodInfoService03/getPrsecImproptFoodList01"
-FOOD_RECALL_SAMPLE_URL = "http://openapi.foodsafetykorea.go.kr/api/sample/I0490/json/{start}/{end}"
-FOOD_RECALL_LIVE_URL = "http://openapi.foodsafetykorea.go.kr/api/{api_key}/I0490/json/{start}/{end}"
+FOOD_RECALL_SAMPLE_URL = "https://openapi.foodsafetykorea.go.kr/api/sample/I0490/json/{start}/{end}"
+FOOD_RECALL_LIVE_URL = "https://openapi.foodsafetykorea.go.kr/api/{api_key}/I0490/json/{start}/{end}"
 
 
 class ApiError(RuntimeError):
