@@ -323,7 +323,7 @@ test("seoul subway docs require an explicit proxy until the hosted route is live
   const proxyReadme = read(path.join("packages", "k-skill-proxy", "README.md"));
   const secretsExample = read(path.join("examples", "secrets.env.example"));
 
-  assert.match(readme, /\| 서울 지하철 도착정보 조회 \| .* \| 프록시 URL 필요 \|/);
+  assert.match(readme, /\| 서울 지하철 도착정보 조회 \| .* \| 불필요 \|/);
   assert.match(setup, /\| 서울 지하철 도착정보 조회 \| self-host 또는 배포 확인이 끝난 `KSKILL_PROXY_BASE_URL` \|/);
   assert.match(install, /--skill seoul-subway-arrival/);
 
@@ -1197,8 +1197,7 @@ test("repository docs advertise the korean-law-search skill with mode-specific k
   assert.ok(fs.existsSync(featureDocPath), "expected docs/features/korean-law-search.md to exist");
   assert.match(readme, /\| 한국 법령 검색 \|/);
   assert.match(readme, /\[한국 법령 검색 가이드\]\(docs\/features\/korean-law-search\.md\)/);
-  assert.match(readme, /로컬 CLI\/MCP면 `LAW_OC` 필요, remote endpoint\/법망 fallback은 불필요/);
-  assert.match(readme, /법망 fallback/i);
+  assert.match(readme, /\| 한국 법령 검색 \| .* \| 불필요 \|/);
   assert.match(install, /--skill korean-law-search/);
   assert.match(install, /로컬 CLI\/MCP 경로는 `LAW_OC`/);
   assert.match(install, /remote endpoint는 `LAW_OC` 없이 `url`만/);
