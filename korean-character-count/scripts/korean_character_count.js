@@ -4,7 +4,8 @@
 const fs = require("node:fs");
 
 const LINE_BREAK_PATTERN = /\r\n|[\n\r\u2028\u2029]/gu;
-const HANGUL_PATTERN = /^[\p{Script=Hangul}\p{Mark}]+$/u;
+const HANGUL_OR_MARK_PATTERN = /^[\p{Script=Hangul}\p{Mark}]+$/u;
+const HAS_HANGUL_PATTERN = /\p{Script=Hangul}/u;
 const WHITESPACE_ONLY_PATTERN = /^\s+$/u;
 const ASCII_ONLY_PATTERN = /^[\x00-\x7F]+$/;
 
@@ -60,7 +61,7 @@ function countNeisGraphemeBytes(grapheme) {
     return 1;
   }
 
-  if (HANGUL_PATTERN.test(grapheme)) {
+  if (HANGUL_OR_MARK_PATTERN.test(grapheme) && HAS_HANGUL_PATTERN.test(grapheme)) {
     return 3;
   }
 
@@ -171,7 +172,7 @@ function parseArgs(argv, stdinIsTTY = process.stdin.isTTY) {
 }
 
 function setInputMode(options, nextMode) {
-  if (options.inputMode && options.inputMode !== nextMode) {
+  if (options.inputMode) {
     throw new Error("Provide exactly one input source with --text, --file, or --stdin.");
   }
 

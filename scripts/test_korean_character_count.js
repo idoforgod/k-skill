@@ -41,6 +41,12 @@ test("countNeisBytes applies Hangul 3-byte, ASCII 1-byte, and newline 2-byte rul
   assert.equal(countNeisBytes("한글"), 6);
 });
 
+test("countNeisBytes falls back to UTF-8 bytes for non-Hangul graphemes", () => {
+  assert.equal(countUtf8Bytes("\u0301"), 2);
+  assert.equal(countNeisBytes("\u0301"), 2);
+  assert.equal(countNeisBytes("🙂"), countUtf8Bytes("🙂"));
+});
+
 test("parseArgs enforces one input source and validates the profile", () => {
   assert.deepEqual(parseArgs(["--text", "가나다"]), {
     format: "json",
@@ -50,6 +56,7 @@ test("parseArgs enforces one input source and validates the profile", () => {
   });
 
   assert.throws(() => parseArgs(["--text", "가", "--file", "sample.txt"]), /exactly one input source/i);
+  assert.throws(() => parseArgs(["--text", "가", "--text", "나"]), /exactly one input source/i);
   assert.throws(() => parseArgs(["--profile", "legacy", "--text", "가"]), /unknown profile/i);
 });
 
@@ -88,6 +95,17 @@ test("CLI accepts text, file, and stdin input", () => {
     );
     assert.equal(stdinOutput.profile, "neis");
     assert.equal(stdinOutput.counts.bytes, countNeisBytes("가나다\nABC"));
+
+    const duplicateText = childProcess.spawnSync(
+      "node",
+      ["scripts/korean_character_count.js", "--text", "가나다", "--text", "라마바", "--format", "json"],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+      },
+    );
+    assert.notEqual(duplicateText.status, 0);
+    assert.match(duplicateText.stderr, /exactly one input source/i);
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
