@@ -56,6 +56,8 @@ npx --yes skills add <owner/repo> \
   --skill real-estate-search \
   --skill korean-stock-search \
   --skill household-waste-info \
+  --skill mfds-drug-safety \
+  --skill mfds-food-safety \
   --skill joseon-sillok-search \
   --skill korean-patent-search \
   --skill korea-weather \
@@ -83,6 +85,8 @@ npx --yes skills add <owner/repo> \
   --skill ktx-booking \
   --skill korean-law-search \
   --skill real-estate-search \
+  --skill mfds-drug-safety \
+  --skill mfds-food-safety \
   --skill cheap-gas-nearby \
   --skill joseon-sillok-search \
   --skill korean-patent-search \

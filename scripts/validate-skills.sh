@@ -40,6 +40,7 @@ done < <(
     ! -name .github \
     ! -name .claude \
     ! -name .omx \
+    ! -name .ouroboros \
     ! -name .changeset \
     ! -name docs \
     ! -name node_modules \
