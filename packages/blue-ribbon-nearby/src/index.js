@@ -6,6 +6,12 @@ const {
   parseZoneCatalogHtml
 } = require("./parse");
 
+const {
+  browserFetchNearby,
+  browserFetchZoneCatalog,
+  isBrowserFallbackAvailable
+} = require("./browser-fallback");
+
 const DEFAULT_PROXY_BASE_URL = "https://k-skill-proxy.nomadamas.org";
 
 const DEFAULT_BROWSER_HEADERS = {
@@ -160,8 +166,16 @@ function buildNearbySearchParams(options = {}) {
 }
 
 async function fetchZoneCatalog(options = {}) {
-  const html = await fetchText(SEARCH_ZONE_URL, options);
-  return parseZoneCatalogHtml(html);
+  try {
+    const html = await fetchText(SEARCH_ZONE_URL, options);
+    return parseZoneCatalogHtml(html);
+  } catch (error) {
+    if (error.statusCode === 403 && isBrowserFallbackAvailable()) {
+      const html = await browserFetchZoneCatalog();
+      return parseZoneCatalogHtml(html);
+    }
+    throw error;
+  }
 }
 
 async function fetchNearbyMap(params, options = {}) {
@@ -173,7 +187,14 @@ async function fetchNearbyMap(params, options = {}) {
     }
   }
 
-  return fetchJson(url.toString(), options);
+  try {
+    return await fetchJson(url.toString(), options);
+  } catch (error) {
+    if (error.statusCode === 403 && isBrowserFallbackAvailable()) {
+      return browserFetchNearby(params);
+    }
+    throw error;
+  }
 }
 
 function sortNearbyItems(items) {
@@ -343,6 +364,7 @@ module.exports = {
   buildNearbySearchParams,
   fetchZoneCatalog,
   findZoneMatches,
+  isBrowserFallbackAvailable,
   normalizeNearbyItem,
   parseZoneCatalogHtml,
   searchNearbyByCoordinates,
