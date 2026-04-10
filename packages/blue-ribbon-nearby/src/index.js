@@ -115,6 +115,14 @@ function useDirectApi(options = {}) {
   return options.useDirectApi === true;
 }
 
+function shouldUseBrowserFallback(error) {
+  return (
+    error?.statusCode === 403 &&
+    error?.upstreamError === undefined &&
+    isBrowserFallbackAvailable()
+  );
+}
+
 async function fetchNearbyViaProxy(latitude, longitude, distanceMeters, limit, options = {}) {
   const base = resolveProxyBaseUrl(options);
   const url = new URL(`${base}/v1/blue-ribbon/nearby`);
@@ -170,7 +178,7 @@ async function fetchZoneCatalog(options = {}) {
     const html = await fetchText(SEARCH_ZONE_URL, options);
     return parseZoneCatalogHtml(html);
   } catch (error) {
-    if (error.statusCode === 403 && isBrowserFallbackAvailable()) {
+    if (shouldUseBrowserFallback(error)) {
       const html = await browserFetchZoneCatalog();
       return parseZoneCatalogHtml(html);
     }
@@ -190,7 +198,7 @@ async function fetchNearbyMap(params, options = {}) {
   try {
     return await fetchJson(url.toString(), options);
   } catch (error) {
-    if (error.statusCode === 403 && isBrowserFallbackAvailable()) {
+    if (shouldUseBrowserFallback(error)) {
       return browserFetchNearby(params);
     }
     throw error;
