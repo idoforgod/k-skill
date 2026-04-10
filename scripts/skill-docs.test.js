@@ -232,6 +232,16 @@ test("proxy docs keep KEDU_INFO_KEY server-only and document household-waste env
   assert.match(proxyFeatureDoc, /DATA_GO_KR_API_KEY/);
 });
 
+test("setup guide lists household waste proxy usage alongside other hosted proxy skills", () => {
+  const setup = read(path.join("docs", "setup.md"));
+
+  assert.match(
+    setup,
+    /\| 생활쓰레기 배출정보 조회 \| 사용자 시크릿 불필요 \(프록시에 `DATA_GO_KR_API_KEY`가 설정된 hosted\/self-host 사용\) \|/,
+  );
+  assert.match(setup, /\[생활쓰레기 배출정보 조회 가이드\]\(features\/household-waste-info\.md\)/);
+});
+
 test("repository docs advertise the used-car-price-search skill", () => {
   const readme = read("README.md");
   const install = read(path.join("docs", "install.md"));
