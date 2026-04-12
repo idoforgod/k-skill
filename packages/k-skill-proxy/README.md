@@ -9,6 +9,9 @@
 - `GET /v1/korea-weather/forecast`
 - `GET /v1/seoul-subway/arrival`
 - `GET /v1/han-river/water-level`
+- `GET /v1/household-waste/info` — 생활쓰레기 배출정보(`DATA_GO_KR_API_KEY`; `pageNo=1`, `numOfRows=100` 필수)
+- `GET /v1/neis/school-search` — 나이스 학교기본정보(교육청명·학교명 검색)
+- `GET /v1/neis/school-meal` — 나이스 급식식단정보(일자별 메뉴)
 - `GET /v1/korean-stock/search`
 - `GET /v1/korean-stock/base-info`
 - `GET /v1/korean-stock/trade-info`
@@ -19,12 +22,14 @@
 - `KMA_OPEN_API_KEY` — 프록시 서버 쪽 기상청 단기예보 upstream key
 - `SEOUL_OPEN_API_KEY` — 프록시 서버 쪽 서울 열린데이터 광장 upstream key
 - `HRFCO_OPEN_API_KEY` — 프록시 서버 쪽 한강홍수통제소 upstream key
+- `KEDU_INFO_KEY` — 프록시 서버 쪽 나이스(NEIS) 교육정보 개방 포털 Open API 인증키 (`school-search`, `school-meal`)
 - `KRX_API_KEY` — 프록시 서버 쪽 KRX Open API upstream key
 - `KSKILL_PROXY_HOST` — 기본 `127.0.0.1`
 - `KSKILL_PROXY_PORT` — 기본 `4020`
 - `KSKILL_PROXY_CACHE_TTL_MS` — 기본 `300000`
 - `KSKILL_PROXY_RATE_LIMIT_WINDOW_MS` — 기본 `60000`
 - `KSKILL_PROXY_RATE_LIMIT_MAX` — 기본 `60`
+- `DATA_GO_KR_API_KEY` - 공공데이터포털 에서 쓰이는 API 인증키 (`household-waste`, `mfds-drug-safety`)
 
 기본 정책은 **무료 API 공개 프록시 = 무인증** 이다. 대신 endpoint scope 를 좁게 유지하고, cache + rate limit 으로 남용을 늦춘다.
 
@@ -56,6 +61,34 @@ curl -fsS --get 'http://127.0.0.1:4020/v1/korea-weather/forecast' \
 ```bash
 curl -fsS --get 'http://127.0.0.1:4020/v1/han-river/water-level' \
   --data-urlencode 'stationName=한강대교'
+```
+
+나이스 학교 검색·급식 식단 예시 (`KEDU_INFO_KEY` 필요). 급식은 교육청 코드(`ATPT_OFCDC_SC_CODE`)와 학교 코드(`SD_SCHUL_CODE`)가 필요하므로 보통 아래 순서로 호출한다.
+
+학교 검색:
+
+```bash
+curl -fsS --get 'http://127.0.0.1:4020/v1/neis/school-search' \
+  --data-urlencode 'educationOffice=서울특별시교육청' \
+  --data-urlencode 'schoolName=미래초등학교'
+```
+
+급식 식단:
+
+```bash
+curl -fsS --get 'http://127.0.0.1:4020/v1/neis/school-meal' \
+  --data-urlencode 'educationOfficeCode=B10' \
+  --data-urlencode 'schoolCode=7010123' \
+  --data-urlencode 'mealDate=20260410'
+```
+
+생활쓰레기 배출정보 예시 (`DATA_GO_KR_API_KEY` 필요). `pageNo`·`numOfRows`는 반드시 `1`·`100`:
+
+```bash
+curl -fsS --get 'http://127.0.0.1:4020/v1/household-waste/info' \
+  --data-urlencode 'cond[SGG_NM::LIKE]=강남구' \
+  --data-urlencode 'pageNo=1' \
+  --data-urlencode 'numOfRows=100'
 ```
 
 한국 주식 검색 예시:

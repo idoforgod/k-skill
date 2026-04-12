@@ -65,6 +65,7 @@ npx --yes skills add <owner/repo> \
   --skill fine-dust-location \
   --skill han-river-water-level \
   --skill subway-lost-property \
+  --skill geeknews-search \
   --skill daiso-product-search \
   --skill market-kurly-search \
   --skill olive-young-search \
@@ -76,6 +77,7 @@ npx --yes skills add <owner/repo> \
   --skill bunjang-search \
   --skill used-car-price-search \
   --skill korean-spell-check \
+  --skill k-schoollunch-menu \
   --skill korean-character-count
 ```
 
@@ -96,6 +98,7 @@ npx --yes skills add <owner/repo> \
   --skill hipass-receipt \
   --skill seoul-subway-arrival \
   --skill subway-lost-property \
+  --skill geeknews-search \
   --skill korea-weather \
   --skill fine-dust-location
 ```
@@ -324,6 +327,7 @@ node scripts/korean_character_count.js --text $'첫 줄\n둘째 줄🙂' --profi
 - `korean-stock-search`
 - `household-waste-info`
 - `cheap-gas-nearby`
+- `k-schoollunch-menu` (hosted proxy에 `KEDU_INFO_KEY`가 배포된 경우 사용자 시크릿 불필요)
 
 관련 문서:
 

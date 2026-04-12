@@ -42,6 +42,8 @@ done < <(
     ! -name .omx \
     ! -name .ouroboros \
     ! -name .changeset \
+    ! -name .cursor \
+    ! -name .vscode \
     ! -name docs \
     ! -name node_modules \
     ! -name packages \

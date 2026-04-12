@@ -513,6 +513,35 @@ test("ktx-booking helper python regression tests pass", () => {
   );
 });
 
+
+
+test("repository docs advertise the geeknews-search skill across the documented surfaces", () => {
+  const readme = read("README.md");
+  const install = read(path.join("docs", "install.md"));
+  const featureDocPath = path.join(repoRoot, "docs", "features", "geeknews-search.md");
+  const skillPath = path.join(repoRoot, "geeknews-search", "SKILL.md");
+
+  assert.ok(fs.existsSync(featureDocPath), "expected docs/features/geeknews-search.md to exist");
+  assert.ok(fs.existsSync(skillPath), "expected geeknews-search/SKILL.md to exist");
+  assert.match(readme, /\| 긱뉴스 조회 \|/);
+  assert.match(readme, /\[긱뉴스 조회 가이드\]\(docs\/features\/geeknews-search\.md\)/);
+  assert.match(install, /--skill geeknews-search/);
+});
+
+test("geeknews-search docs lock the RSS-first list-search-detail workflow", () => {
+  const skill = read(path.join("geeknews-search", "SKILL.md"));
+  const featureDoc = read(path.join("docs", "features", "geeknews-search.md"));
+
+  for (const doc of [skill, featureDoc]) {
+    assert.match(doc, /feeds\.feedburner\.com\/geeknews-feed/);
+    assert.match(doc, /python3 scripts\/geeknews_search\.py list/);
+    assert.match(doc, /python3 scripts\/geeknews_search\.py search/);
+    assert.match(doc, /python3 scripts\/geeknews_search\.py detail/);
+    assert.match(doc, /RSS-first|RSS first|RSS 피드/);
+    assert.match(doc, /read-only|읽기 전용/);
+  }
+});
+
 test("repository docs advertise the subway-lost-property skill across the documented surfaces", () => {
   const readme = read("README.md");
   const install = read(path.join("docs", "install.md"));
@@ -1866,6 +1895,11 @@ test("repository docs advertise the korean-character-count skill and determinist
   assert.match(readme, /\| 한국어 글자 수 세기 \|/);
   assert.match(readme, /\[한국어 글자 수 세기 가이드\]\(docs\/features\/korean-character-count\.md\)/);
   assert.match(install, /--skill korean-character-count/);
+  assert.match(
+    install,
+    /--skill k-schoollunch-menu \\\n  --skill korean-character-count/,
+    "docs/install.md selective-install block should keep k-schoollunch-menu and korean-character-count in the same continued shell command",
+  );
   assert.match(install, /node scripts\/korean_character_count\.js --text "가나다"/);
 
   for (const doc of [skill, featureDoc]) {
@@ -2089,4 +2123,68 @@ test("MFDS public-health skill docs require interview-first safety flow and offi
 
   assert.match(sources, /https:\/\/openapi\.foodsafetykorea\.go\.kr\/api\/sample\/I0490\/json\/1\/5/);
   assert.doesNotMatch(sources, /http:\/\/openapi\.foodsafetykorea\.go\.kr/);
+});
+
+test("docs/setup.md and k-skill-setup document hosted household waste proxy flow", () => {
+  const setup = read(path.join("docs", "setup.md"));
+  const setupSkill = read(path.join("k-skill-setup", "SKILL.md"));
+  
+  assert.match(
+    setup,
+    /한국 주식 정보 조회, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회는 기본 hosted proxy를 쓰므로/,
+    "setup.md intro should list household waste among hosted-proxy features with no user-side key",
+  );
+  assert.match(setup, /DATA_GO_KR_API_KEY.*서버에 설정/);
+  assert.match(
+    setup,
+    /미세먼지, 한강 수위, 주유소 가격, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회는 `KSKILL_PROXY_BASE_URL` 을 비워 두면 기본 hosted path\(`k-skill-proxy\.nomadamas\.org`\)/,
+    "setup.md should list fine dust, Han River, gas, household waste, and school lunch when KSKILL_PROXY_BASE_URL is unset",
+  );
+  assert.match(
+    setupSkill,
+    /미세먼지, 한강 수위, 주유소 가격, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회는 `KSKILL_PROXY_BASE_URL`/,
+    "k-skill-setup SKILL should mirror setup.md hosted-proxy unset-base-URL guidance",
+  );
+
+  assert.match(setup, /\| 생활쓰레기 배출정보 조회 \|/);
+  assert.match(setup, /DATA_GO_KR_API_KEY/);
+  assert.match(setup, /pageNo=1.*numOfRows=100|numOfRows=100.*pageNo=1/);
+  assert.match(setup, /\[생활쓰레기 배출정보 조회 가이드\]\(features\/household-waste-info\.md\)/);
+
+  assert.match(setupSkill, /\/v1\/household-waste\/info/);
+  assert.match(setupSkill, /DATA_GO_KR_API_KEY/);
+  assert.match(setupSkill, /생활쓰레기 배출정보 조회: 사용자 시크릿 불필요/);
+});
+
+test("docs/setup.md and k-skill-setup document hosted school lunch proxy flow", () => {
+  const setup = read(path.join("docs", "setup.md"));
+  const setupSkill = read(path.join("k-skill-setup", "SKILL.md"));
+  const examplesSecrets = read(path.join("examples", "secrets.env.example"));
+  assert.match(setup, /학교 급식 식단 조회는 기본 hosted proxy/);
+  assert.match(setup, /KEDU_INFO_KEY.*서버에 설정/);
+  assert.match(
+    setup,
+    /미세먼지, 한강 수위, 주유소 가격, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회는 `KSKILL_PROXY_BASE_URL` 을 비워 두면 기본 hosted path\(`k-skill-proxy\.nomadamas\.org`\)/,
+    "setup.md should list fine dust, Han River, gas, household waste, and school lunch when KSKILL_PROXY_BASE_URL is unset",
+  );
+  assert.match(
+    setupSkill,
+    /미세먼지, 한강 수위, 주유소 가격, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회는 `KSKILL_PROXY_BASE_URL`/,
+    "k-skill-setup SKILL should mirror setup.md hosted-proxy unset-base-URL guidance",
+  );
+
+  assert.match(setup, /\| 학교 급식 식단 조회 \|/);
+  assert.match(setup, /KEDU_INFO_KEY/);
+  assert.match(setup, /\[학교 급식 식단 조회 가이드\]\(features\/k-schoollunch-menu\.md\)/);
+
+  assert.match(setupSkill, /\/v1\/neis\/school-search/);
+  assert.match(setupSkill, /\/v1\/neis\/school-meal/);
+  assert.match(setupSkill, /KEDU_INFO_KEY/);
+  assert.match(setupSkill, /학교 급식 식단 조회: 사용자 시크릿 불필요/);
+
+  assert.doesNotMatch(
+    examplesSecrets,
+    /^KEDU_INFO_KEY=/m,
+    "client secrets example must not encourage KEDU_INFO_KEY (proxy server only)",
+  );
 });

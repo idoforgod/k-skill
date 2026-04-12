@@ -6,6 +6,7 @@ const { fetchWaterLevelReport } = require("./hrfco");
 const { KRX_MARKETS, fetchBaseInfo, fetchTradeInfo, getCurrentKstDate, searchStocks } = require("./krx-stock");
 const { fetchTransactions, VALID_ASSET_TYPES, VALID_DEAL_TYPES } = require("./molit");
 const { searchRegionCode } = require("./region-lookup");
+const { resolveEducationOfficeFromNaturalLanguage } = require("./neis-office-codes");
 const AIR_KOREA_UPSTREAM_BASE_URL = "http://apis.data.go.kr";
 const DATA_GO_KR_UPSTREAM_BASE_URL = "https://apis.data.go.kr";
 const SEOUL_OPEN_API_BASE_URL = "http://swopenapi.seoul.go.kr";
@@ -13,6 +14,9 @@ const KMA_FORECAST_BASE_TIMES = ["0200", "0500", "0800", "1100", "1400", "1700",
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const KMA_FORECAST_READY_MINUTE = 10;
 const OPINET_API_BASE_URL = "https://www.opinet.co.kr/api";
+const NEIS_MEAL_SERVICE_URL = "https://open.neis.go.kr/hub/mealServiceDietInfo";
+const NEIS_SCHOOL_INFO_URL = "https://open.neis.go.kr/hub/schoolInfo";
+
 const ALLOWED_AIRKOREA_ROUTES = new Map([
   ["MsrstnInfoInqireSvc", new Set(["getMsrstnList", "getNearbyMsrstnList", "getTMStdrCrdnt"])],
   ["ArpltnInforInqireSvc", new Set(["getMsrstnAcctoRltmMesureDnsty", "getCtprvnRltmMesureDnsty"])],
@@ -134,6 +138,7 @@ function buildConfig(env = process.env) {
     opinetApiKey: trimOrNull(env.OPINET_API_KEY),
     blueRibbonSessionId: trimOrNull(env.BLUE_RIBBON_SESSION_ID),
     molitApiKey: trimOrNull(env.DATA_GO_KR_API_KEY),
+    keduInfoKey: trimOrNull(env.KEDU_INFO_KEY),
     krxApiKey: trimOrNull(env.KRX_API_KEY),
     cacheTtlMs: parseInteger(env.KSKILL_PROXY_CACHE_TTL_MS, 300000),
     rateLimitWindowMs: parseInteger(env.KSKILL_PROXY_RATE_LIMIT_WINDOW_MS, 60000),
@@ -326,6 +331,111 @@ function normalizeOpinetDetailQuery(query) {
     throw new Error("Provide id.");
   }
   return { id };
+}
+
+function normalizeNeisSchoolMealQuery(query) {
+  const atptOfcdcScCode = trimOrNull(
+    query.atptOfcdcScCode ??
+      query.ATPT_OFCDC_SC_CODE ??
+      query.education_office_code ??
+      query.educationOfficeCode
+  );
+  const sdSchulCode = trimOrNull(
+    query.sdSchulCode ?? query.SD_SCHUL_CODE ?? query.school_code ?? query.schoolCode
+  );
+  const dateRaw = trimOrNull(
+    query.mlsvYmd ?? query.MLSV_YMD ?? query.meal_date ?? query.mealDate ?? query.date
+  );
+
+  if (!atptOfcdcScCode) {
+    throw new Error("Provide educationOfficeCode (ATPT_OFCDC_SC_CODE).");
+  }
+  if (!sdSchulCode) {
+    throw new Error("Provide schoolCode (SD_SCHUL_CODE).");
+  }
+  if (!dateRaw) {
+    throw new Error("Provide mealDate (MLSV_YMD) as YYYYMMDD.");
+  }
+
+  const mlsvYmd = dateRaw.replaceAll("-", "").replaceAll(".", "");
+  if (!/^\d{8}$/.test(mlsvYmd)) {
+    throw new Error("mealDate must be YYYYMMDD (8 digits).");
+  }
+
+  const mealKindRaw = trimOrNull(
+    query.mmealScCode ?? query.MMEAL_SC_CODE ?? query.meal_kind_code ?? query.mealKindCode
+  );
+  let mmealScCode = null;
+  if (mealKindRaw) {
+    if (!["1", "2", "3"].includes(mealKindRaw)) {
+      throw new Error("mealKindCode must be 1 (breakfast), 2 (lunch), or 3 (dinner).");
+    }
+    mmealScCode = mealKindRaw;
+  }
+
+  const pIndex = parseInteger(query.pIndex ?? query.p_index, 1);
+  const pSize = parseInteger(query.pSize ?? query.p_size, 100);
+  if (pIndex < 1) {
+    throw new Error("pIndex must be >= 1.");
+  }
+  if (pSize < 1 || pSize > 1000) {
+    throw new Error("pSize must be between 1 and 1000.");
+  }
+
+  return { atptOfcdcScCode, sdSchulCode, mlsvYmd, mmealScCode, pIndex, pSize };
+}
+
+function normalizeNeisSchoolSearchQuery(query) {
+  const educationOfficeRaw = trimOrNull(
+    query.educationOffice ??
+      query.education_office ??
+      query.office ??
+      query.atpt ??
+      query.ATPT_OFCDC_SC_CODE
+  );
+  const schoolNameRaw = trimOrNull(
+    query.schoolName ?? query.school_name ?? query.school ?? query.SCHUL_NM ?? query.schulNm
+  );
+
+  if (!educationOfficeRaw) {
+    throw new Error("Provide educationOffice (e.g. 서울특별시교육청 or B10).");
+  }
+  if (!schoolNameRaw) {
+    throw new Error("Provide schoolName (e.g. 미래초등학교).");
+  }
+
+  const resolved = resolveEducationOfficeFromNaturalLanguage(educationOfficeRaw);
+  if (!resolved.ok) {
+    if (resolved.reason === "ambiguous") {
+      const err = new Error(
+        `educationOffice matched multiple offices (${resolved.codes.join(", ")}). Use a more specific name or pass the ATPT code (e.g. B10).`
+      );
+      err.code = "ambiguous_education_office";
+      err.candidate_codes = resolved.codes;
+      throw err;
+    }
+    throw new Error(
+      "educationOffice is not a recognized regional office. Use names like 서울특별시교육청 or a code like B10."
+    );
+  }
+
+  const pIndex = parseInteger(query.pIndex ?? query.p_index, 1);
+  const pSize = parseInteger(query.pSize ?? query.p_size, 100);
+  if (pIndex < 1) {
+    throw new Error("pIndex must be >= 1.");
+  }
+  if (pSize < 1 || pSize > 1000) {
+    throw new Error("pSize must be between 1 and 1000.");
+  }
+
+  return {
+    educationOfficeInput: educationOfficeRaw,
+    atptOfcdcScCode: resolved.code,
+    resolvedOfficeLabel: resolved.matchedLabel,
+    schulNm: schoolNameRaw,
+    pIndex,
+    pSize
+  };
 }
 
 function normalizeBlueRibbonNearbyQuery(query) {
@@ -660,6 +770,135 @@ async function proxyHrfcoWaterLevelRequest({
   }
 }
 
+async function proxyNeisSchoolMealRequest({
+  apiKey,
+  atptOfcdcScCode,
+  sdSchulCode,
+  mlsvYmd,
+  mmealScCode = null,
+  pIndex = 1,
+  pSize = 100,
+  fetchImpl = global.fetch
+}) {
+  if (!apiKey) {
+    return {
+      statusCode: 503,
+      contentType: "application/json; charset=utf-8",
+      body: JSON.stringify({
+        error: "upstream_not_configured",
+        message: "KEDU_INFO_KEY is not configured on the proxy server."
+      })
+    };
+  }
+
+  const url = new URL(NEIS_MEAL_SERVICE_URL);
+  url.searchParams.set("KEY", apiKey);
+  url.searchParams.set("Type", "json");
+  url.searchParams.set("pIndex", String(pIndex));
+  url.searchParams.set("pSize", String(pSize));
+  url.searchParams.set("ATPT_OFCDC_SC_CODE", atptOfcdcScCode);
+  url.searchParams.set("SD_SCHUL_CODE", sdSchulCode);
+  url.searchParams.set("MLSV_YMD", mlsvYmd);
+  if (mmealScCode) {
+    url.searchParams.set("MMEAL_SC_CODE", mmealScCode);
+  }
+
+  const response = await fetchImpl(url, {
+    signal: AbortSignal.timeout(20000)
+  });
+
+  return {
+    statusCode: response.status,
+    contentType: response.headers.get("content-type") || "application/json; charset=utf-8",
+    body: await response.text()
+  };
+}
+
+async function proxyNeisSchoolInfoRequest({
+  apiKey,
+  atptOfcdcScCode,
+  schulNm,
+  pIndex = 1,
+  pSize = 100,
+  fetchImpl = global.fetch
+}) {
+  if (!apiKey) {
+    return {
+      statusCode: 503,
+      contentType: "application/json; charset=utf-8",
+      body: JSON.stringify({
+        error: "upstream_not_configured",
+        message: "KEDU_INFO_KEY is not configured on the proxy server."
+      })
+    };
+  }
+
+  const url = new URL(NEIS_SCHOOL_INFO_URL);
+  url.searchParams.set("KEY", apiKey);
+  url.searchParams.set("Type", "json");
+  url.searchParams.set("pIndex", String(pIndex));
+  url.searchParams.set("pSize", String(pSize));
+  url.searchParams.set("ATPT_OFCDC_SC_CODE", atptOfcdcScCode);
+  url.searchParams.set("SCHUL_NM", schulNm);
+
+  const response = await fetchImpl(url, {
+    signal: AbortSignal.timeout(20000)
+  });
+
+  return {
+    statusCode: response.status,
+    contentType: response.headers.get("content-type") || "application/json; charset=utf-8",
+    body: await response.text()
+  };
+}
+
+
+
+function validateHouseholdWastePaginationQuery(query) {
+  const HOUSEHOLD_WASTE_PAGINATION_RULE =
+    "Household waste info requires pageNo=1 and numOfRows=100 (page_no and num_of_rows accepted). Other values or non-digit strings return 400.";
+
+  const rawPage = query.pageNo ?? query.page_no;
+  const rawNum = query.numOfRows ?? query.num_of_rows;
+  const pageProvided =
+    rawPage !== undefined && rawPage !== null && String(rawPage).trim() !== "";
+  const numProvided =
+    rawNum !== undefined && rawNum !== null && String(rawNum).trim() !== "";
+
+  if (!pageProvided || !numProvided) {
+    return { ok: false, message: HOUSEHOLD_WASTE_PAGINATION_RULE };
+  }
+
+  const parseDigitsOnlyUInt = (raw, label) => {
+    const s = String(raw).trim();
+    if (!/^\d+$/.test(s)) {
+      return {
+        ok: false,
+        message: `Invalid ${label} for household waste info: use digits only; pageNo must be 1 and numOfRows must be 100.`
+      };
+    }
+    return { ok: true, value: Number.parseInt(s, 10) };
+  };
+
+  const pageParsed = parseDigitsOnlyUInt(rawPage, "pageNo");
+  if (!pageParsed.ok) {
+    return pageParsed;
+  }
+  if (pageParsed.value !== 1) {
+    return { ok: false, message: HOUSEHOLD_WASTE_PAGINATION_RULE };
+  }
+
+  const numParsed = parseDigitsOnlyUInt(rawNum, "numOfRows");
+  if (!numParsed.ok) {
+    return numParsed;
+  }
+  if (numParsed.value !== 100) {
+    return { ok: false, message: HOUSEHOLD_WASTE_PAGINATION_RULE };
+  }
+
+  return { ok: true };
+}
+
 function buildServer({ env = process.env, provider = null, now = () => new Date() } = {}) {
   const config = buildConfig(env);
   const cache = createMemoryCache();
@@ -697,6 +936,7 @@ function buildServer({ env = process.env, provider = null, now = () => new Date(
       hrfcoConfigured: Boolean(config.hrfcoApiKey),
       opinetConfigured: Boolean(config.opinetApiKey),
       molitConfigured: Boolean(config.molitApiKey),
+      neisSchoolMealConfigured: Boolean(config.keduInfoKey),
       krxConfigured: Boolean(config.krxApiKey)
     },
     auth: {
@@ -1314,6 +1554,96 @@ function buildServer({ env = process.env, provider = null, now = () => new Date(
     return payload;
   });
 
+  app.get("/v1/household-waste/info", async (request, reply) => {
+    const query = request.query || {};
+    const sggNm = query["cond[SGG_NM::LIKE]"];
+
+    if (!sggNm || !sggNm.trim()) {
+      reply.code(400);
+      return {
+        error: "bad_request",
+        message: "cond[SGG_NM::LIKE] is required"
+      };
+    }
+
+    const paginationCheck = validateHouseholdWastePaginationQuery(query);
+    if (!paginationCheck.ok) {
+      reply.code(400);
+      return {
+        error: "bad_request",
+        message: paginationCheck.message
+      };
+    }
+
+    const pageNo =  "1";
+    const numOfRows =  "100";
+
+    const cacheKey = makeCacheKey({
+      route: "household-waste-info",
+      sggNm: sggNm.trim()
+    });
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return {
+        ...cached,
+        proxy: {
+          ...cached.proxy,
+          cache: { hit: true, ttl_ms: config.cacheTtlMs }
+        }
+      };
+    }
+
+    if (!config.molitApiKey) {
+      reply.code(503);
+      return {
+        error: "upstream_not_configured",
+        message: "DATA_GO_KR_API_KEY is not configured on the proxy server.",
+        proxy: { name: config.proxyName, cache: { hit: false, ttl_ms: config.cacheTtlMs } }
+      };
+    }
+
+    const url = new URL("https://apis.data.go.kr/1741000/household_waste_info/info");
+    url.searchParams.set("serviceKey", config.molitApiKey);
+    url.searchParams.set("pageNo", pageNo);
+    url.searchParams.set("numOfRows", numOfRows);
+    url.searchParams.set("returnType", "json");
+    url.searchParams.set("cond[SGG_NM::LIKE]", sggNm.trim());
+
+    let upstreamData;
+    try {
+      const res = await fetch(url.toString());
+      if (!res.ok) {
+        reply.code(502);
+        return {
+          error: "upstream_error",
+          message: `Upstream responded with ${res.status}`,
+          proxy: { name: config.proxyName, cache: { hit: false, ttl_ms: config.cacheTtlMs } }
+        };
+      }
+      upstreamData = await res.json();
+    } catch (err) {
+      reply.code(502);
+      return {
+        error: "upstream_fetch_failed",
+        message: err.message,
+        proxy: { name: config.proxyName, cache: { hit: false, ttl_ms: config.cacheTtlMs } }
+      };
+    }
+
+    const payload = {
+      ...upstreamData,
+      query: { sgg_nm: sggNm.trim(), page_no: pageNo, num_of_rows: numOfRows },
+      proxy: {
+        name: config.proxyName,
+        cache: { hit: false, ttl_ms: config.cacheTtlMs },
+        requested_at: new Date().toISOString()
+      }
+    };
+
+    cache.set(cacheKey, payload, config.cacheTtlMs);
+    return payload;
+  });
+  
   app.get("/v1/korean-stock/search", async (request, reply) => {
     let normalized;
 
@@ -1402,6 +1732,227 @@ function buildServer({ env = process.env, provider = null, now = () => new Date(
     };
 
     cache.set(cacheKey, payload, config.cacheTtlMs);
+    return payload;
+  });
+
+  app.get("/v1/neis/school-search", async (request, reply) => {
+    let normalized;
+
+    try {
+      normalized = normalizeNeisSchoolSearchQuery(request.query || {});
+    } catch (error) {
+      reply.code(400);
+      const payload = {
+        error: error.code === "ambiguous_education_office" ? error.code : "bad_request",
+        message: error.message
+      };
+      if (Array.isArray(error.candidate_codes)) {
+        payload.candidate_codes = error.candidate_codes;
+      }
+      return payload;
+    }
+
+    const cacheKey = makeCacheKey({
+      route: "neis-school-search",
+      ...normalized
+    });
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return {
+        ...cached,
+        proxy: {
+          ...cached.proxy,
+          cache: {
+            hit: true,
+            ttl_ms: config.cacheTtlMs
+          }
+        }
+      };
+    }
+
+    if (!config.keduInfoKey) {
+      reply.code(503);
+      return {
+        error: "upstream_not_configured",
+        message: "KEDU_INFO_KEY is not configured on the proxy server.",
+        proxy: {
+          name: config.proxyName,
+          cache: {
+            hit: false,
+            ttl_ms: config.cacheTtlMs
+          }
+        }
+      };
+    }
+
+    let upstream;
+    try {
+      upstream = await proxyNeisSchoolInfoRequest({
+        apiKey: config.keduInfoKey,
+        atptOfcdcScCode: normalized.atptOfcdcScCode,
+        schulNm: normalized.schulNm,
+        pIndex: normalized.pIndex,
+        pSize: normalized.pSize
+      });
+    } catch (error) {
+      reply.code(error.statusCode && error.statusCode >= 400 ? error.statusCode : 502);
+      return {
+        error: error.code || "proxy_error",
+        message: error.message
+      };
+    }
+
+    reply.code(upstream.statusCode);
+    reply.header("content-type", upstream.contentType);
+
+    const looksJson =
+      upstream.contentType.includes("json") ||
+      upstream.body.trimStart().startsWith("{") ||
+      upstream.body.trimStart().startsWith("[");
+
+    if (!looksJson) {
+      return upstream.body;
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(upstream.body);
+    } catch {
+      return upstream.body;
+    }
+
+    payload.resolved_education_office = {
+      input: normalized.educationOfficeInput,
+      atpt_ofcdc_sc_code: normalized.atptOfcdcScCode,
+      matched_label: normalized.resolvedOfficeLabel
+    };
+    payload.proxy = {
+      name: config.proxyName,
+      cache: {
+        hit: false,
+        ttl_ms: config.cacheTtlMs
+      },
+      requested_at: new Date().toISOString()
+    };
+    payload.query = {
+      education_office: normalized.educationOfficeInput,
+      school_name: normalized.schulNm,
+      p_index: normalized.pIndex,
+      p_size: normalized.pSize
+    };
+
+    if (upstream.statusCode >= 200 && upstream.statusCode < 300) {
+      cache.set(cacheKey, payload, config.cacheTtlMs);
+    }
+
+    return payload;
+  });
+
+  app.get("/v1/neis/school-meal", async (request, reply) => {
+    let normalized;
+
+    try {
+      normalized = normalizeNeisSchoolMealQuery(request.query || {});
+    } catch (error) {
+      reply.code(400);
+      return {
+        error: "bad_request",
+        message: error.message
+      };
+    }
+
+    const cacheKey = makeCacheKey({
+      route: "neis-school-meal",
+      ...normalized
+    });
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return {
+        ...cached,
+        proxy: {
+          ...cached.proxy,
+          cache: {
+            hit: true,
+            ttl_ms: config.cacheTtlMs
+          }
+        }
+      };
+    }
+
+    if (!config.keduInfoKey) {
+      reply.code(503);
+      return {
+        error: "upstream_not_configured",
+        message: "KEDU_INFO_KEY is not configured on the proxy server.",
+        proxy: {
+          name: config.proxyName,
+          cache: {
+            hit: false,
+            ttl_ms: config.cacheTtlMs
+          }
+        }
+      };
+    }
+
+    let upstream;
+    try {
+      upstream = await proxyNeisSchoolMealRequest({
+        apiKey: config.keduInfoKey,
+        atptOfcdcScCode: normalized.atptOfcdcScCode,
+        sdSchulCode: normalized.sdSchulCode,
+        mlsvYmd: normalized.mlsvYmd,
+        mmealScCode: normalized.mmealScCode,
+        pIndex: normalized.pIndex,
+        pSize: normalized.pSize
+      });
+    } catch (error) {
+      reply.code(error.statusCode && error.statusCode >= 400 ? error.statusCode : 502);
+      return {
+        error: error.code || "proxy_error",
+        message: error.message
+      };
+    }
+
+    reply.code(upstream.statusCode);
+    reply.header("content-type", upstream.contentType);
+
+    const looksJson =
+      upstream.contentType.includes("json") ||
+      upstream.body.trimStart().startsWith("{") ||
+      upstream.body.trimStart().startsWith("[");
+
+    if (!looksJson) {
+      return upstream.body;
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(upstream.body);
+    } catch {
+      return upstream.body;
+    }
+
+    payload.proxy = {
+      name: config.proxyName,
+      cache: {
+        hit: false,
+        ttl_ms: config.cacheTtlMs
+      },
+      requested_at: new Date().toISOString()
+    };
+    payload.query = {
+      education_office_code: normalized.atptOfcdcScCode,
+      school_code: normalized.sdSchulCode,
+      meal_date: normalized.mlsvYmd,
+      meal_kind_code: normalized.mmealScCode,
+      p_index: normalized.pIndex,
+      p_size: normalized.pSize
+    };
+
+    if (upstream.statusCode >= 200 && upstream.statusCode < 300) {
+      cache.set(cacheKey, payload, config.cacheTtlMs);
+    }
+
     return payload;
   });
 
@@ -1591,89 +2142,6 @@ function buildServer({ env = process.env, provider = null, now = () => new Date(
     return payload;
   });
 
-  app.get("/v1/household-waste/info", async (request, reply) => {
-    const query = request.query || {};
-    const sggNm = query["cond[SGG_NM::LIKE]"];
-
-    if (!sggNm || !sggNm.trim()) {
-      reply.code(400);
-      return {
-        error: "bad_request",
-        message: "cond[SGG_NM::LIKE] is required"
-      };
-    }
-
-    const pageNo = query.pageNo || "1";
-    const numOfRows = query.numOfRows || "20";
-
-    const cacheKey = makeCacheKey({
-      route: "household-waste-info",
-      sggNm: sggNm.trim(),
-      pageNo,
-      numOfRows
-    });
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      return {
-        ...cached,
-        proxy: {
-          ...cached.proxy,
-          cache: { hit: true, ttl_ms: config.cacheTtlMs }
-        }
-      };
-    }
-
-    if (!config.molitApiKey) {
-      reply.code(503);
-      return {
-        error: "upstream_not_configured",
-        message: "DATA_GO_KR_API_KEY is not configured on the proxy server.",
-        proxy: { name: config.proxyName, cache: { hit: false, ttl_ms: config.cacheTtlMs } }
-      };
-    }
-
-    const url = new URL("https://apis.data.go.kr/1741000/household_waste_info/info");
-    url.searchParams.set("serviceKey", config.molitApiKey);
-    url.searchParams.set("pageNo", pageNo);
-    url.searchParams.set("numOfRows", numOfRows);
-    url.searchParams.set("returnType", "json");
-    url.searchParams.set("cond[SGG_NM::LIKE]", sggNm.trim());
-
-    let upstreamData;
-    try {
-      const res = await fetch(url.toString());
-      if (!res.ok) {
-        reply.code(502);
-        return {
-          error: "upstream_error",
-          message: `Upstream responded with ${res.status}`,
-          proxy: { name: config.proxyName, cache: { hit: false, ttl_ms: config.cacheTtlMs } }
-        };
-      }
-      upstreamData = await res.json();
-    } catch (err) {
-      reply.code(502);
-      return {
-        error: "upstream_fetch_failed",
-        message: err.message,
-        proxy: { name: config.proxyName, cache: { hit: false, ttl_ms: config.cacheTtlMs } }
-      };
-    }
-
-    const payload = {
-      ...upstreamData,
-      query: { sgg_nm: sggNm.trim(), page_no: pageNo, num_of_rows: numOfRows },
-      proxy: {
-        name: config.proxyName,
-        cache: { hit: false, ttl_ms: config.cacheTtlMs },
-        requested_at: new Date().toISOString()
-      }
-    };
-
-    cache.set(cacheKey, payload, config.cacheTtlMs);
-    return payload;
-  });
-
   app.setErrorHandler((error, request, reply) => {
     request.log.error(error);
     const statusCode = error.statusCode && error.statusCode >= 400 ? error.statusCode : 500;
@@ -1684,6 +2152,10 @@ function buildServer({ env = process.env, provider = null, now = () => new Date(
 
     if (Array.isArray(error.candidateStations)) {
       payload.candidate_stations = error.candidateStations;
+    }
+
+    if (Array.isArray(error.candidate_codes)) {
+      payload.candidate_codes = error.candidate_codes;
     }
 
     if (error.sidoName) {
@@ -1722,11 +2194,15 @@ module.exports = {
   normalizeKoreanStockSearchQuery,
   normalizeOpinetAroundQuery,
   normalizeOpinetDetailQuery,
+  normalizeNeisSchoolMealQuery,
+  normalizeNeisSchoolSearchQuery,
   normalizeRealEstateQuery,
   normalizeRegionCodeQuery,
   normalizeSeoulSubwayQuery,
   proxyAirKoreaRequest,
   proxyHrfcoWaterLevelRequest,
+  proxyNeisSchoolMealRequest,
+  proxyNeisSchoolInfoRequest,
   proxyKmaWeatherRequest,
   proxyOpinetRequest,
   proxySeoulSubwayRequest,

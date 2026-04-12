@@ -22,12 +22,12 @@
 
 ```bash
 curl -fsS --get 'https://k-skill-proxy.nomadamas.org/v1/household-waste/info' \
+  --data-urlencode 'cond[SGG_NM::LIKE]=강남구' \
   --data-urlencode 'pageNo=1' \
-  --data-urlencode 'numOfRows=20' \
-  --data-urlencode 'cond[SGG_NM::LIKE]=강남구'
+  --data-urlencode 'numOfRows=100'
 ```
 
-현재 proxy가 패스스루하는 파라미터는 `pageNo`, `numOfRows`, `cond[SGG_NM::LIKE]` 뿐이며, `returnType`은 항상 `json`으로 강제된다. 원본 API의 `cond[DAT_CRTR_YMD::*]`, `cond[DAT_UPDT_PNT::*]` 같은 부가 필터는 현재 지원하지 않는다 — 일반 사용자 질의("강남구 쓰레기 배출 요일")는 시군구 검색만으로 충분하기 때문이다.
+클라이언트는 **`cond[SGG_NM::LIKE]`** 와 **`pageNo` / `numOfRows`**(또는 `page_no` / `num_of_rows`)를 **함께** 넘긴다. `pageNo` / `numOfRows` 값은 **반드시 `1` / `100`** 이어야 하고, 그 외 값이나 숫자만으로 표현되지 않는 문자열이면 proxy가 **`400`** 을 반환하고 upstream을 호출하지 않는다. upstream에는 항상 `pageNo=1`, `numOfRows=100`만 전달된다. `returnType`은 항상 `json`으로 강제된다. 원본 API의 `cond[DAT_CRTR_YMD::*]`, `cond[DAT_UPDT_PNT::*]` 같은 부가 필터는 현재 지원하지 않는다 — 일반 사용자 질의("강남구 쓰레기 배출 요일")는 시군구 검색만으로 충분하기 때문이다.
 
 ## 조회 흐름 권장 순서
 

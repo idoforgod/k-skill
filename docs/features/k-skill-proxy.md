@@ -12,18 +12,21 @@
 client/skill -> k-skill-proxy -> upstream public API
 ```
 
-현재 기본 엔드포인트는 아래 다섯 가지입니다.
+현재 기본 엔드포인트는 아래와 같습니다.
 
 - `GET /health`
 - `GET /v1/fine-dust/report`
 - `GET /v1/korea-weather/forecast`
 - `GET /v1/seoul-subway/arrival`
 - `GET /v1/han-river/water-level`
+- `GET /v1/household-waste/info` (생활쓰레기 배출정보, `DATA_GO_KR_API_KEY`; 쿼리 `pageNo`·`numOfRows` 필수, 값 `1`·`100`)
 - `GET /v1/korean-stock/search`
 - `GET /v1/korean-stock/base-info`
 - `GET /v1/korean-stock/trade-info`
 - `GET /v1/opinet/around`
 - `GET /v1/opinet/detail`
+- `GET /v1/neis/school-search` (나이스 학교기본정보, `KEDU_INFO_KEY`)
+- `GET /v1/neis/school-meal` (나이스 급식식단정보, `KEDU_INFO_KEY`)
 - `GET /B552584/:service/:operation` (허용된 AirKorea route passthrough)
 
 ## 권장 환경변수
@@ -39,6 +42,8 @@ client/skill -> k-skill-proxy -> upstream public API
 - `SEOUL_OPEN_API_KEY=...`
 - `HRFCO_OPEN_API_KEY=...`
 - `OPINET_API_KEY=...`
+- `DATA_GO_KR_API_KEY=...`
+- `KEDU_INFO_KEY=...` (나이스 교육정보 개방 포털 Open API 인증키)
 - `KRX_API_KEY=...`
 - `KSKILL_PROXY_PORT=4020`
 
@@ -134,6 +139,30 @@ Opinet 주유소 상세 endpoint:
 ```bash
 curl -fsS --get 'https://k-skill-proxy.nomadamas.org/v1/opinet/detail' \
   --data-urlencode 'id=A0009905'
+```
+
+나이스 학교 검색·급식 endpoint (학교 급식 식단 스킬에서 사용):
+
+```bash
+curl -fsS --get 'https://k-skill-proxy.nomadamas.org/v1/neis/school-search' \
+  --data-urlencode 'educationOffice=서울특별시교육청' \
+  --data-urlencode 'schoolName=미래초등학교'
+```
+
+```bash
+curl -fsS --get 'https://k-skill-proxy.nomadamas.org/v1/neis/school-meal' \
+  --data-urlencode 'educationOfficeCode=B10' \
+  --data-urlencode 'schoolCode=7010123' \
+  --data-urlencode 'mealDate=20260410'
+```
+
+생활쓰레기 배출정보 endpoint. 쿼리에 **`pageNo`와 `numOfRows`를 반드시 포함**하고, 값은 각각 **`1`**, **`100`**만 허용한다(`page_no` / `num_of_rows` 동일). 누락·다른 값·숫자만이 아닌 문자열이면 **`400`**(upstream 미호출):
+
+```bash
+curl -fsS --get 'https://k-skill-proxy.nomadamas.org/v1/household-waste/info' \
+  --data-urlencode 'cond[SGG_NM::LIKE]=강남구' \
+  --data-urlencode 'pageNo=1' \
+  --data-urlencode 'numOfRows=100'
 ```
 
 한국 주식 검색 endpoint:
