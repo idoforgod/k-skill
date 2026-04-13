@@ -12,6 +12,8 @@
 - `GET /v1/household-waste/info` — 생활쓰레기 배출정보(`DATA_GO_KR_API_KEY`; `pageNo=1`, `numOfRows=100` 필수)
 - `GET /v1/neis/school-search` — 나이스 학교기본정보(교육청명·학교명 검색)
 - `GET /v1/neis/school-meal` — 나이스 급식식단정보(일자별 메뉴)
+- `GET /v1/mfds/drug-safety/lookup` — 식약처 의약품개요정보(e약은요) + 안전상비의약품 정보(`DATA_GO_KR_API_KEY`)
+- `GET /v1/mfds/food-safety/search` — 식약처 부적합 식품 + 식품안전나라 회수 정보(`DATA_GO_KR_API_KEY`, 선택적 `FOODSAFETYKOREA_API_KEY`)
 - `GET /v1/korean-stock/search`
 - `GET /v1/korean-stock/base-info`
 - `GET /v1/korean-stock/trade-info`
@@ -23,13 +25,14 @@
 - `SEOUL_OPEN_API_KEY` — 프록시 서버 쪽 서울 열린데이터 광장 upstream key
 - `HRFCO_OPEN_API_KEY` — 프록시 서버 쪽 한강홍수통제소 upstream key
 - `KEDU_INFO_KEY` — 프록시 서버 쪽 나이스(NEIS) 교육정보 개방 포털 Open API 인증키 (`school-search`, `school-meal`)
+- `FOODSAFETYKOREA_API_KEY` — 프록시 서버 쪽 식품안전나라 회수정보 live key (`mfds/food-safety/search`; 없으면 sample feed fallback)
 - `KRX_API_KEY` — 프록시 서버 쪽 KRX Open API upstream key
 - `KSKILL_PROXY_HOST` — 기본 `127.0.0.1`
 - `KSKILL_PROXY_PORT` — 기본 `4020`
 - `KSKILL_PROXY_CACHE_TTL_MS` — 기본 `300000`
 - `KSKILL_PROXY_RATE_LIMIT_WINDOW_MS` — 기본 `60000`
 - `KSKILL_PROXY_RATE_LIMIT_MAX` — 기본 `60`
-- `DATA_GO_KR_API_KEY` - 공공데이터포털 에서 쓰이는 API 인증키 (`household-waste`, `mfds-drug-safety`)
+- `DATA_GO_KR_API_KEY` - 공공데이터포털 에서 쓰이는 API 인증키 (`household-waste`, `real-estate`, `mfds-drug-safety`, `mfds-food-safety`)
 
 기본 정책은 **무료 API 공개 프록시 = 무인증** 이다. 대신 endpoint scope 를 좁게 유지하고, cache + rate limit 으로 남용을 늦춘다.
 
@@ -89,6 +92,23 @@ curl -fsS --get 'http://127.0.0.1:4020/v1/household-waste/info' \
   --data-urlencode 'cond[SGG_NM::LIKE]=강남구' \
   --data-urlencode 'pageNo=1' \
   --data-urlencode 'numOfRows=100'
+```
+
+의약품 안전 체크 예시 (`DATA_GO_KR_API_KEY` 필요):
+
+```bash
+curl -fsS --get 'http://127.0.0.1:4020/v1/mfds/drug-safety/lookup' \
+  --data-urlencode 'itemName=타이레놀' \
+  --data-urlencode 'itemName=판콜' \
+  --data-urlencode 'limit=5'
+```
+
+식품 안전 체크 예시 (`DATA_GO_KR_API_KEY` 필요, `FOODSAFETYKOREA_API_KEY` 없으면 회수 정보는 sample fallback):
+
+```bash
+curl -fsS --get 'http://127.0.0.1:4020/v1/mfds/food-safety/search' \
+  --data-urlencode 'query=김밥' \
+  --data-urlencode 'limit=5'
 ```
 
 한국 주식 검색 예시:

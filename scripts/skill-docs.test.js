@@ -286,6 +286,9 @@ test("repository docs advertise the MFDS public-health skills and mandatory symp
   const readme = read("README.md");
   const install = read(path.join("docs", "install.md"));
   const sources = read(path.join("docs", "sources.md"));
+  const setup = read(path.join("docs", "setup.md"));
+  const security = read(path.join("docs", "security-and-secrets.md"));
+  const setupSkill = read(path.join("k-skill-setup", "SKILL.md"));
   const drugSkillPath = path.join(repoRoot, "mfds-drug-safety", "SKILL.md");
   const foodSkillPath = path.join(repoRoot, "mfds-food-safety", "SKILL.md");
   const drugFeaturePath = path.join(repoRoot, "docs", "features", "mfds-drug-safety.md");
@@ -297,6 +300,8 @@ test("repository docs advertise the MFDS public-health skills and mandatory symp
   assert.ok(fs.existsSync(foodFeaturePath), "expected docs/features/mfds-food-safety.md to exist");
   assert.match(readme, /\| 의약품 안전 체크 \|/);
   assert.match(readme, /\| 식품 안전 체크 \|/);
+  assert.match(readme, /\| 의약품 안전 체크 \| .* \| 불필요 \|/);
+  assert.match(readme, /\| 식품 안전 체크 \| .* \| 불필요 \|/);
   assert.match(install, /--skill mfds-drug-safety/);
   assert.match(install, /--skill mfds-food-safety/);
   assert.match(sources, /15075057\/openapi\.do/);
@@ -304,6 +309,11 @@ test("repository docs advertise the MFDS public-health skills and mandatory symp
   assert.match(sources, /15056516\/openapi\.do/);
   assert.match(sources, /15074318\/openapi\.do/);
   assert.match(sources, /foodsafetykorea\.go\.kr\/api\/openApiInfo\.do.*svc_no=I0490/);
+  for (const doc of [setup, security, setupSkill]) {
+    assert.match(doc, /의약품 안전 체크|식품 안전 체크/);
+    assert.match(doc, /FOODSAFETYKOREA_API_KEY|DATA_GO_KR_API_KEY/);
+    assert.match(doc, /사용자.*불필요|proxy 서버/u);
+  }
 
   for (const relativePath of [
     path.join("mfds-drug-safety", "SKILL.md"),
@@ -2100,13 +2110,18 @@ test("MFDS public-health skill docs require interview-first safety flow and offi
   const drugFeatureDoc = read(path.join("docs", "features", "mfds-drug-safety.md"));
   const foodFeatureDoc = read(path.join("docs", "features", "mfds-food-safety.md"));
   const sources = read(path.join("docs", "sources.md"));
+  const proxyReadme = read(path.join("packages", "k-skill-proxy", "README.md"));
+  const proxyDoc = read(path.join("docs", "features", "k-skill-proxy.md"));
 
   for (const doc of [drugSkill, drugFeatureDoc]) {
     assert.match(doc, /증상.*바로 단정하지 말고.*먼저 되묻/);
     assert.match(doc, /호흡곤란|의식저하|심한 발진/);
     assert.match(doc, /DrbEasyDrugInfoService\/getDrbEasyDrugList/);
     assert.match(doc, /SafeStadDrugService\/getSafeStadDrugInq/);
-    assert.match(doc, /DATA_GO_KR_API_KEY/);
+    assert.match(doc, /KSKILL_PROXY_BASE_URL|k-skill-proxy\.nomadamas\.org/);
+    assert.match(doc, /사용자.*시크릿 없음|사용자 API key 없이/u);
+    assert.match(doc, /DATA_GO_KR_API_KEY.*프록시 운영 서버/u);
+    assert.match(doc, /\/v1\/mfds\/drug-safety\/lookup/);
     assert.match(doc, /python3 scripts\/mfds_drug_safety\.py/);
   }
 
@@ -2115,7 +2130,11 @@ test("MFDS public-health skill docs require interview-first safety flow and offi
     assert.match(doc, /혈변|탈수|호흡곤란/);
     assert.match(doc, /PrsecImproptFoodInfoService03\/getPrsecImproptFoodList01/);
     assert.match(doc, /I0490/);
-    assert.match(doc, /DATA_GO_KR_API_KEY/);
+    assert.match(doc, /KSKILL_PROXY_BASE_URL|k-skill-proxy\.nomadamas\.org/);
+    assert.match(doc, /사용자.*시크릿 없음|사용자 API key 없이/u);
+    assert.match(doc, /DATA_GO_KR_API_KEY.*프록시 운영 서버/u);
+    assert.match(doc, /FOODSAFETYKOREA_API_KEY/);
+    assert.match(doc, /\/v1\/mfds\/food-safety\/search/);
     assert.match(doc, /python3 scripts\/mfds_food_safety\.py/);
     assert.match(doc, /https:\/\/openapi\.foodsafetykorea\.go\.kr\/api\/sample\/I0490\/json\/1\/5/);
     assert.doesNotMatch(doc, /http:\/\/openapi\.foodsafetykorea\.go\.kr/);
@@ -2123,6 +2142,11 @@ test("MFDS public-health skill docs require interview-first safety flow and offi
 
   assert.match(sources, /https:\/\/openapi\.foodsafetykorea\.go\.kr\/api\/sample\/I0490\/json\/1\/5/);
   assert.doesNotMatch(sources, /http:\/\/openapi\.foodsafetykorea\.go\.kr/);
+  for (const doc of [proxyReadme, proxyDoc]) {
+    assert.match(doc, /\/v1\/mfds\/drug-safety\/lookup/);
+    assert.match(doc, /\/v1\/mfds\/food-safety\/search/);
+    assert.match(doc, /FOODSAFETYKOREA_API_KEY/);
+  }
 });
 
 test("docs/setup.md and k-skill-setup document hosted household waste proxy flow", () => {
@@ -2131,19 +2155,19 @@ test("docs/setup.md and k-skill-setup document hosted household waste proxy flow
   
   assert.match(
     setup,
-    /한국 주식 정보 조회, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회는 기본 hosted proxy를 쓰므로/,
-    "setup.md intro should list household waste among hosted-proxy features with no user-side key",
+    /한국 주식 정보 조회, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회, 의약품 안전 체크, 식품 안전 체크는 기본 hosted proxy를 쓰므로/,
+    "setup.md intro should list household waste, school lunch, and MFDS skills among hosted-proxy features with no user-side key",
   );
   assert.match(setup, /DATA_GO_KR_API_KEY.*서버에 설정/);
   assert.match(
     setup,
-    /미세먼지, 한강 수위, 주유소 가격, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회는 `KSKILL_PROXY_BASE_URL` 을 비워 두면 기본 hosted path\(`k-skill-proxy\.nomadamas\.org`\)/,
-    "setup.md should list fine dust, Han River, gas, household waste, and school lunch when KSKILL_PROXY_BASE_URL is unset",
+    /미세먼지, 한강 수위, 주유소 가격, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회, 의약품 안전 체크, 식품 안전 체크는 `KSKILL_PROXY_BASE_URL` 을 비워 두면 기본 hosted path\(`k-skill-proxy\.nomadamas\.org`\)/,
+    "setup.md should list fine dust, Han River, gas, household waste, school lunch, and MFDS skills when KSKILL_PROXY_BASE_URL is unset",
   );
   assert.match(
     setupSkill,
-    /미세먼지, 한강 수위, 주유소 가격, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회는 `KSKILL_PROXY_BASE_URL`/,
-    "k-skill-setup SKILL should mirror setup.md hosted-proxy unset-base-URL guidance",
+    /미세먼지, 한강 수위, 주유소 가격, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회, 의약품 안전 체크, 식품 안전 체크는 `KSKILL_PROXY_BASE_URL`/,
+    "k-skill-setup SKILL should mirror setup.md hosted-proxy unset-base-URL guidance including MFDS skills",
   );
 
   assert.match(setup, /\| 생활쓰레기 배출정보 조회 \|/);
@@ -2160,17 +2184,17 @@ test("docs/setup.md and k-skill-setup document hosted school lunch proxy flow", 
   const setup = read(path.join("docs", "setup.md"));
   const setupSkill = read(path.join("k-skill-setup", "SKILL.md"));
   const examplesSecrets = read(path.join("examples", "secrets.env.example"));
-  assert.match(setup, /학교 급식 식단 조회는 기본 hosted proxy/);
+  assert.match(setup, /학교 급식 식단 조회, 의약품 안전 체크, 식품 안전 체크는 기본 hosted proxy/);
   assert.match(setup, /KEDU_INFO_KEY.*서버에 설정/);
   assert.match(
     setup,
-    /미세먼지, 한강 수위, 주유소 가격, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회는 `KSKILL_PROXY_BASE_URL` 을 비워 두면 기본 hosted path\(`k-skill-proxy\.nomadamas\.org`\)/,
-    "setup.md should list fine dust, Han River, gas, household waste, and school lunch when KSKILL_PROXY_BASE_URL is unset",
+    /미세먼지, 한강 수위, 주유소 가격, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회, 의약품 안전 체크, 식품 안전 체크는 `KSKILL_PROXY_BASE_URL` 을 비워 두면 기본 hosted path\(`k-skill-proxy\.nomadamas\.org`\)/,
+    "setup.md should list fine dust, Han River, gas, household waste, school lunch, and MFDS skills when KSKILL_PROXY_BASE_URL is unset",
   );
   assert.match(
     setupSkill,
-    /미세먼지, 한강 수위, 주유소 가격, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회는 `KSKILL_PROXY_BASE_URL`/,
-    "k-skill-setup SKILL should mirror setup.md hosted-proxy unset-base-URL guidance",
+    /미세먼지, 한강 수위, 주유소 가격, 생활쓰레기 배출정보 조회, 학교 급식 식단 조회, 의약품 안전 체크, 식품 안전 체크는 `KSKILL_PROXY_BASE_URL`/,
+    "k-skill-setup SKILL should mirror setup.md hosted-proxy unset-base-URL guidance including MFDS skills",
   );
 
   assert.match(setup, /\| 학교 급식 식단 조회 \|/);

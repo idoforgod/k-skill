@@ -11,8 +11,8 @@ import urllib.request
 from html import unescape
 from typing import Any
 
-DRUG_EASY_ENDPOINT = "https://apis.data.go.kr/1471000/DrbEasyDrugInfoService/getDrbEasyDrugList"
-SAFE_STAD_ENDPOINT = "https://apis.data.go.kr/1471000/SafeStadDrugService/getSafeStadDrugInq"
+PROXY_BASE_URL_ENV_VAR = "KSKILL_PROXY_BASE_URL"
+DEFAULT_PROXY_BASE_URL = "https://k-skill-proxy.nomadamas.org"
 
 
 class ApiError(RuntimeError):
@@ -31,12 +31,14 @@ def summarize_text(value: Any) -> str:
     return text
 
 
-def resolve_service_key(explicit_key: str | None, env: dict[str, str] | None = None) -> str:
+def resolve_proxy_base_url(explicit_base_url: str | None = None, env: dict[str, str] | None = None) -> str:
     env = env or os.environ
-    candidate = explicit_key or env.get("DATA_GO_KR_API_KEY")
-    if not candidate:
-        raise ValueError("DATA_GO_KR_API_KEY 또는 --service-key 가 필요합니다.")
-    return urllib.parse.unquote(str(candidate).strip())
+    candidate = summarize_text(explicit_base_url or env.get(PROXY_BASE_URL_ENV_VAR))
+    if candidate.casefold() in {"off", "false", "0", "disable", "disabled", "none"}:
+        raise ValueError("KSKILL_PROXY_BASE_URL 가 비활성화되어 있습니다.")
+    if candidate and candidate != "replace-me":
+        return candidate.rstrip("/")
+    return DEFAULT_PROXY_BASE_URL
 
 
 def build_drug_interview(question: str | None = None, symptoms: str | None = None) -> dict[str, Any]:
@@ -63,27 +65,27 @@ def build_drug_interview(question: str | None = None, symptoms: str | None = Non
 
 
 EASY_FIELD_MAP = {
-    "item_name": "itemName",
-    "company_name": "entpName",
-    "efficacy": "efcyQesitm",
-    "how_to_use": "useMethodQesitm",
-    "warnings": "atpnWarnQesitm",
-    "cautions": "atpnQesitm",
-    "interactions": "intrcQesitm",
-    "side_effects": "seQesitm",
-    "storage": "depositMethodQesitm",
-    "item_seq": "itemSeq",
+    "item_name": "item_name",
+    "company_name": "company_name",
+    "efficacy": "efficacy",
+    "how_to_use": "how_to_use",
+    "warnings": "warnings",
+    "cautions": "cautions",
+    "interactions": "interactions",
+    "side_effects": "side_effects",
+    "storage": "storage",
+    "item_seq": "item_seq",
 }
 
 SAFE_STAD_FIELD_MAP = {
-    "item_name": "PRDLST_NM",
-    "company_name": "BSSH_NM",
-    "efficacy": "EFCY_QESITM",
-    "how_to_use": "USE_METHOD_QESITM",
-    "warnings": "ATPN_WARN_QESITM",
-    "cautions": "ATPN_QESITM",
-    "interactions": "INTRC_QESITM",
-    "side_effects": "SE_QESITM",
+    "item_name": "item_name",
+    "company_name": "company_name",
+    "efficacy": "efficacy",
+    "how_to_use": "how_to_use",
+    "warnings": "warnings",
+    "cautions": "cautions",
+    "interactions": "interactions",
+    "side_effects": "side_effects",
 }
 
 
@@ -99,70 +101,45 @@ def normalize_safe_stad_item(item: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
-def _extract_items(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    body = payload.get("body") or {}
-    items = body.get("items") or {}
-    raw = items.get("item")
-    if raw is None:
-        return []
-    if isinstance(raw, list):
-        return [item for item in raw if isinstance(item, dict)]
-    if isinstance(raw, dict):
-        return [raw]
-    return []
-
-
-def _request_json(url: str, params: dict[str, Any]) -> dict[str, Any]:
-    query = urllib.parse.urlencode({key: value for key, value in params.items() if value not in (None, "")})
-    request = urllib.request.Request(f"{url}?{query}", headers={"Accept": "application/json", "User-Agent": "k-skill-mfds/1.0"})
+def read_json_response(request: urllib.request.Request | str) -> dict[str, Any]:
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as error:
-        raise ApiError(f"MFDS request failed with HTTP {error.code}", status_code=error.code, url=request.full_url) from error
+        body = error.read().decode("utf-8", errors="replace")
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            payload = None
+
+        if isinstance(payload, dict) and payload.get("message"):
+            raise ApiError(str(payload["message"]), status_code=error.code, url=getattr(error, "url", None)) from error
+        raise ApiError(
+            f"MFDS drug proxy request failed with HTTP {error.code}",
+            status_code=error.code,
+            url=getattr(error, "url", None),
+        ) from error
+    except urllib.error.URLError as error:
+        raise ApiError(f"MFDS drug proxy request failed: {error.reason}") from error
 
 
 def lookup_drugs(
     item_names: list[str],
     *,
-    service_key: str,
     limit: int = 5,
-    request_json: Any = _request_json,
+    base_url: str | None = None,
+    request_json: Any = read_json_response,
 ) -> dict[str, Any]:
-    normalized_items: list[dict[str, Any]] = []
-    for item_name in item_names:
-        easy_payload = request_json(
-            DRUG_EASY_ENDPOINT,
-            {
-                "ServiceKey": service_key,
-                "pageNo": 1,
-                "numOfRows": limit,
-                "type": "json",
-                "itemName": item_name,
-            },
-        )
-        easy_items = [normalize_easy_drug_item(item) for item in _extract_items(easy_payload)]
-
-        safe_payload = request_json(
-            SAFE_STAD_ENDPOINT,
-            {
-                "serviceKey": service_key,
-                "pageNo": 1,
-                "numOfRows": limit,
-                "type": "json",
-                "PRDLST_NM": item_name,
-            },
-        )
-        safe_items = [normalize_safe_stad_item(item) for item in _extract_items(safe_payload)]
-
-        normalized_items.extend(easy_items)
-        normalized_items.extend(safe_items)
-
-    return {
-        "query": {"item_names": item_names, "limit": limit},
-        "items": normalized_items,
-        "note": "상호작용 문구는 공식 품목 안내를 그대로 요약한 참고 정보이며, 복용 가능 여부의 최종 판단은 약사·의료진 확인이 필요합니다.",
-    }
+    resolved_base_url = resolve_proxy_base_url(base_url)
+    url = f"{resolved_base_url}/v1/mfds/drug-safety/lookup"
+    params: list[tuple[str, str]] = [("itemName", item_name) for item_name in item_names]
+    params.append(("limit", str(limit)))
+    query = urllib.parse.urlencode(params)
+    request = urllib.request.Request(
+        f"{url}?{query}",
+        headers={"Accept": "application/json", "User-Agent": "k-skill-mfds/1.0"},
+    )
+    return request_json(request)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -173,10 +150,10 @@ def build_parser() -> argparse.ArgumentParser:
     interview.add_argument("--question", default="")
     interview.add_argument("--symptoms", default="")
 
-    lookup = subparsers.add_parser("lookup", help="look up official MFDS drug safety records")
+    lookup = subparsers.add_parser("lookup", help="look up official MFDS drug safety records through k-skill-proxy")
     lookup.add_argument("--item-name", action="append", required=True)
-    lookup.add_argument("--service-key")
     lookup.add_argument("--limit", type=int, default=5)
+    lookup.add_argument("--proxy-base-url")
     return parser
 
 
@@ -189,8 +166,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "lookup":
         try:
-            service_key = resolve_service_key(args.service_key)
-            payload = lookup_drugs(args.item_name, service_key=service_key, limit=args.limit)
+            payload = lookup_drugs(args.item_name, limit=args.limit, base_url=args.proxy_base_url)
             print(json.dumps(payload, ensure_ascii=False, indent=2))
             return 0
         except (ValueError, ApiError) as error:

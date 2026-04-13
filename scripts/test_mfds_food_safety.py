@@ -1,16 +1,12 @@
 import unittest
-from unittest import mock
 
 from scripts.mfds_food_safety import (
-    ApiError,
-    FOOD_RECALL_LIVE_URL,
-    FOOD_RECALL_SAMPLE_URL,
-    _request_json,
     build_food_interview,
     filter_food_items,
     normalize_food_recall_row,
     normalize_improper_food_item,
-    resolve_data_go_service_key,
+    resolve_proxy_base_url,
+    search_food_safety,
 )
 
 
@@ -82,38 +78,26 @@ class FoodNormalizationTest(unittest.TestCase):
         self.assertEqual(by_company[0]["company_name"], "김밥나라")
 
 
-class FoodServiceKeyResolutionTest(unittest.TestCase):
-    def test_resolve_data_go_service_key_requires_data_go_kr_api_key(self):
-        with self.assertRaisesRegex(ValueError, "DATA_GO_KR_API_KEY"):
-            resolve_data_go_service_key(None, env={})
+class ProxyResolutionTest(unittest.TestCase):
+    def test_resolve_proxy_base_url_defaults_to_hosted_proxy(self):
+        self.assertEqual(resolve_proxy_base_url(None, env={}), "https://k-skill-proxy.nomadamas.org")
+        self.assertEqual(resolve_proxy_base_url(None, env={"KSKILL_PROXY_BASE_URL": "https://proxy.example.com/"}), "https://proxy.example.com")
+        with self.assertRaisesRegex(ValueError, "KSKILL_PROXY_BASE_URL"):
+            resolve_proxy_base_url(None, env={"KSKILL_PROXY_BASE_URL": "off"})
 
-        self.assertEqual(resolve_data_go_service_key("abc", env={}), "abc")
-        self.assertEqual(resolve_data_go_service_key(None, env={"DATA_GO_KR_API_KEY": "xyz"}), "xyz")
+    def test_search_food_safety_uses_proxy_route(self):
+        captured = {}
 
+        def fake_request_json(request):
+            captured["url"] = request.full_url
+            return {"items": [], "warnings": []}
 
-class FoodRecallTransportTest(unittest.TestCase):
-    def test_food_recall_urls_use_https(self):
-        self.assertTrue(FOOD_RECALL_SAMPLE_URL.startswith("https://"))
-        self.assertTrue(FOOD_RECALL_LIVE_URL.startswith("https://"))
+        payload = search_food_safety("김밥", limit=4, base_url="https://proxy.example.com", request_json=fake_request_json)
 
-    def test_request_json_turns_invalid_foodsafety_key_html_into_api_error(self):
-        class FakeResponse:
-            headers = {"Content-Type": "text/html;charset=utf-8"}
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-            def read(self):
-                return "<html><script>alert('invalid key');</script></html>".encode("utf-8")
-
-        url = FOOD_RECALL_LIVE_URL.format(api_key="invalid-demo-key", start=1, end=1)
-
-        with mock.patch("scripts.mfds_food_safety.urllib.request.urlopen", return_value=FakeResponse()):
-            with self.assertRaisesRegex(ApiError, "foodsafetykorea-key"):
-                _request_json(url)
+        self.assertEqual(payload, {"items": [], "warnings": []})
+        self.assertIn("https://proxy.example.com/v1/mfds/food-safety/search", captured["url"])
+        self.assertIn("query=%EA%B9%80%EB%B0%A5", captured["url"])
+        self.assertIn("limit=4", captured["url"])
 
 
 if __name__ == "__main__":

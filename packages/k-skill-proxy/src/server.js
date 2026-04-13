@@ -4,6 +4,12 @@ const { fetchFineDustReport } = require("./airkorea");
 const { proxyBlueRibbonNearbyRequest } = require("./bluer");
 const { fetchWaterLevelReport } = require("./hrfco");
 const { KRX_MARKETS, fetchBaseInfo, fetchTradeInfo, getCurrentKstDate, searchStocks } = require("./krx-stock");
+const {
+  fetchMfdsDrugLookup,
+  fetchMfdsFoodSafetySearch,
+  normalizeMfdsDrugLookupQuery,
+  normalizeMfdsFoodSafetyQuery
+} = require("./mfds");
 const { fetchTransactions, VALID_ASSET_TYPES, VALID_DEAL_TYPES } = require("./molit");
 const { searchRegionCode } = require("./region-lookup");
 const { resolveEducationOfficeFromNaturalLanguage } = require("./neis-office-codes");
@@ -138,6 +144,7 @@ function buildConfig(env = process.env) {
     opinetApiKey: trimOrNull(env.OPINET_API_KEY),
     blueRibbonSessionId: trimOrNull(env.BLUE_RIBBON_SESSION_ID),
     molitApiKey: trimOrNull(env.DATA_GO_KR_API_KEY),
+    foodsafetyKoreaApiKey: trimOrNull(env.FOODSAFETYKOREA_API_KEY),
     keduInfoKey: trimOrNull(env.KEDU_INFO_KEY),
     krxApiKey: trimOrNull(env.KRX_API_KEY),
     cacheTtlMs: parseInteger(env.KSKILL_PROXY_CACHE_TTL_MS, 300000),
@@ -936,6 +943,7 @@ function buildServer({ env = process.env, provider = null, now = () => new Date(
       hrfcoConfigured: Boolean(config.hrfcoApiKey),
       opinetConfigured: Boolean(config.opinetApiKey),
       molitConfigured: Boolean(config.molitApiKey),
+      foodsafetyKoreaConfigured: Boolean(config.foodsafetyKoreaApiKey),
       neisSchoolMealConfigured: Boolean(config.keduInfoKey),
       krxConfigured: Boolean(config.krxApiKey)
     },
@@ -1638,6 +1646,142 @@ function buildServer({ env = process.env, provider = null, now = () => new Date(
         cache: { hit: false, ttl_ms: config.cacheTtlMs },
         requested_at: new Date().toISOString()
       }
+    };
+
+    cache.set(cacheKey, payload, config.cacheTtlMs);
+    return payload;
+  });
+
+  app.get("/v1/mfds/drug-safety/lookup", async (request, reply) => {
+    let normalized;
+
+    try {
+      normalized = normalizeMfdsDrugLookupQuery(request.query || {});
+    } catch (error) {
+      reply.code(400);
+      return {
+        error: "bad_request",
+        message: error.message
+      };
+    }
+
+    const cacheKey = makeCacheKey({
+      route: "mfds-drug-safety-lookup",
+      ...normalized
+    });
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return {
+        ...cached,
+        proxy: {
+          ...cached.proxy,
+          cache: {
+            hit: true,
+            ttl_ms: config.cacheTtlMs
+          }
+        }
+      };
+    }
+
+    if (!config.molitApiKey) {
+      reply.code(503);
+      return {
+        error: "upstream_not_configured",
+        message: "DATA_GO_KR_API_KEY is not configured on the proxy server.",
+        proxy: {
+          name: config.proxyName,
+          cache: {
+            hit: false,
+            ttl_ms: config.cacheTtlMs
+          }
+        }
+      };
+    }
+
+    let payload;
+    try {
+      payload = await fetchMfdsDrugLookup({
+        itemNames: normalized.itemNames,
+        limit: normalized.limit,
+        dataGoKrApiKey: config.molitApiKey
+      });
+    } catch (error) {
+      reply.code(error.statusCode && error.statusCode >= 400 ? error.statusCode : 502);
+      return {
+        error: error.code || "proxy_error",
+        message: error.message
+      };
+    }
+
+    payload.proxy = {
+      name: config.proxyName,
+      cache: {
+        hit: false,
+        ttl_ms: config.cacheTtlMs
+      },
+      requested_at: new Date().toISOString()
+    };
+
+    cache.set(cacheKey, payload, config.cacheTtlMs);
+    return payload;
+  });
+
+  app.get("/v1/mfds/food-safety/search", async (request, reply) => {
+    let normalized;
+
+    try {
+      normalized = normalizeMfdsFoodSafetyQuery(request.query || {});
+    } catch (error) {
+      reply.code(400);
+      return {
+        error: "bad_request",
+        message: error.message
+      };
+    }
+
+    const cacheKey = makeCacheKey({
+      route: "mfds-food-safety-search",
+      ...normalized,
+      hasImproperFoodKey: Boolean(config.molitApiKey),
+      hasRecallKey: Boolean(config.foodsafetyKoreaApiKey)
+    });
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return {
+        ...cached,
+        proxy: {
+          ...cached.proxy,
+          cache: {
+            hit: true,
+            ttl_ms: config.cacheTtlMs
+          }
+        }
+      };
+    }
+
+    let payload;
+    try {
+      payload = await fetchMfdsFoodSafetySearch({
+        query: normalized.query,
+        limit: normalized.limit,
+        dataGoKrApiKey: config.molitApiKey,
+        foodsafetyKoreaApiKey: config.foodsafetyKoreaApiKey
+      });
+    } catch (error) {
+      reply.code(error.statusCode && error.statusCode >= 400 ? error.statusCode : 502);
+      return {
+        error: error.code || "proxy_error",
+        message: error.message
+      };
+    }
+
+    payload.proxy = {
+      name: config.proxyName,
+      cache: {
+        hit: false,
+        ttl_ms: config.cacheTtlMs
+      },
+      requested_at: new Date().toISOString()
     };
 
     cache.set(cacheKey, payload, config.cacheTtlMs);

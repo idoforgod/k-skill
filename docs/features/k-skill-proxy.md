@@ -20,6 +20,8 @@ client/skill -> k-skill-proxy -> upstream public API
 - `GET /v1/seoul-subway/arrival`
 - `GET /v1/han-river/water-level`
 - `GET /v1/household-waste/info` (생활쓰레기 배출정보, `DATA_GO_KR_API_KEY`; 쿼리 `pageNo`·`numOfRows` 필수, 값 `1`·`100`)
+- `GET /v1/mfds/drug-safety/lookup` (식약처 의약품개요정보 + 안전상비의약품 정보, `DATA_GO_KR_API_KEY`)
+- `GET /v1/mfds/food-safety/search` (식약처 부적합 식품 + 식품안전나라 회수 정보, `DATA_GO_KR_API_KEY`, 선택적 `FOODSAFETYKOREA_API_KEY`)
 - `GET /v1/korean-stock/search`
 - `GET /v1/korean-stock/base-info`
 - `GET /v1/korean-stock/trade-info`
@@ -43,6 +45,7 @@ client/skill -> k-skill-proxy -> upstream public API
 - `HRFCO_OPEN_API_KEY=...`
 - `OPINET_API_KEY=...`
 - `DATA_GO_KR_API_KEY=...`
+- `FOODSAFETYKOREA_API_KEY=...` (선택: 식품안전나라 회수 live 결과, 없으면 sample fallback)
 - `KEDU_INFO_KEY=...` (나이스 교육정보 개방 포털 Open API 인증키)
 - `KRX_API_KEY=...`
 - `KSKILL_PROXY_PORT=4020`
@@ -163,6 +166,23 @@ curl -fsS --get 'https://k-skill-proxy.nomadamas.org/v1/household-waste/info' \
   --data-urlencode 'cond[SGG_NM::LIKE]=강남구' \
   --data-urlencode 'pageNo=1' \
   --data-urlencode 'numOfRows=100'
+```
+
+의약품 안전 체크 endpoint:
+
+```bash
+curl -fsS --get 'https://k-skill-proxy.nomadamas.org/v1/mfds/drug-safety/lookup' \
+  --data-urlencode 'itemName=타이레놀' \
+  --data-urlencode 'itemName=판콜' \
+  --data-urlencode 'limit=5'
+```
+
+식품 안전 체크 endpoint:
+
+```bash
+curl -fsS --get 'https://k-skill-proxy.nomadamas.org/v1/mfds/food-safety/search' \
+  --data-urlencode 'query=김밥' \
+  --data-urlencode 'limit=5'
 ```
 
 한국 주식 검색 endpoint:

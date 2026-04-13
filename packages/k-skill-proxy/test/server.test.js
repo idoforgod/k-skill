@@ -1556,6 +1556,23 @@ test("health endpoint reports molitConfigured status", async (t) => {
   assert.equal(response.json().upstreams.molitConfigured, true);
 });
 
+test("health endpoint reports foodsafetyKoreaConfigured when FOODSAFETYKOREA_API_KEY is set", async (t) => {
+  const app = buildServer({
+    env: { FOODSAFETYKOREA_API_KEY: "food-key" }
+  });
+
+  t.after(async () => {
+    await app.close();
+  });
+
+  const response = await app.inject({
+    method: "GET",
+    url: "/health"
+  });
+
+  assert.equal(response.json().upstreams.foodsafetyKoreaConfigured, true);
+});
+
 const SAMPLE_NEIS_MEAL_JSON = JSON.stringify({
   mealServiceDietInfo: [
     {
@@ -2082,4 +2099,249 @@ test("household waste info endpoint surfaces upstream non-200 as 502", async (t)
 
   assert.equal(response.statusCode, 502);
   assert.equal(response.json().error, "upstream_error");
+});
+
+test("mfds drug-safety lookup endpoint returns 503 when DATA_GO_KR_API_KEY is missing", async (t) => {
+  const app = buildServer();
+
+  t.after(async () => {
+    await app.close();
+  });
+
+  const response = await app.inject({
+    method: "GET",
+    url: "/v1/mfds/drug-safety/lookup?itemName=%ED%83%80%EC%9D%B4%EB%A0%88%EB%86%80"
+  });
+
+  assert.equal(response.statusCode, 503);
+  assert.equal(response.json().error, "upstream_not_configured");
+});
+
+test("mfds drug-safety lookup endpoint proxies official drug surfaces and caches", async (t) => {
+  const originalFetch = global.fetch;
+  const fetchCalls = [];
+  global.fetch = async (url) => {
+    const text = String(url);
+    fetchCalls.push(text);
+
+    if (text.includes("DrbEasyDrugInfoService/getDrbEasyDrugList")) {
+      return new Response(
+        JSON.stringify({
+          body: {
+            items: {
+              item: [
+                {
+                  itemName: "타이레놀정160밀리그램",
+                  entpName: "한국얀센",
+                  efcyQesitm: "감기로 인한 발열 및 동통에 사용합니다.",
+                  intrcQesitm: "다른 해열진통제와 함께 복용하지 마십시오."
+                }
+              ]
+            }
+          }
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json;charset=UTF-8" }
+        }
+      );
+    }
+
+    if (text.includes("SafeStadDrugService/getSafeStadDrugInq")) {
+      return new Response(
+        JSON.stringify({
+          body: {
+            items: {
+              item: [
+                {
+                  PRDLST_NM: "판콜에스내복액",
+                  BSSH_NM: "동화약품",
+                  EFCY_QESITM: "감기 증상 완화",
+                  INTRC_QESITM: "다른 감기약과 병용 주의"
+                }
+              ]
+            }
+          }
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json;charset=UTF-8" }
+        }
+      );
+    }
+
+    throw new Error(`unexpected URL: ${url}`);
+  };
+
+  const app = buildServer({
+    env: {
+      DATA_GO_KR_API_KEY: "test-key",
+      KSKILL_PROXY_CACHE_TTL_MS: "60000"
+    }
+  });
+
+  t.after(async () => {
+    global.fetch = originalFetch;
+    await app.close();
+  });
+
+  const url =
+    "/v1/mfds/drug-safety/lookup?itemName=%ED%83%80%EC%9D%B4%EB%A0%88%EB%86%80&itemName=%ED%8C%90%EC%BD%9C&limit=5";
+  const first = await app.inject({ method: "GET", url });
+  const second = await app.inject({ method: "GET", url });
+
+  assert.equal(first.statusCode, 200);
+  assert.equal(first.json().proxy.cache.hit, false);
+  assert.equal(second.json().proxy.cache.hit, true);
+  assert.equal(fetchCalls.length, 4);
+  assert.equal(first.json().query.item_names[0], "타이레놀");
+  assert.equal(first.json().items[0].source, "drug_easy_info");
+  assert.equal(first.json().items[1].source, "safe_standby_medicine");
+  assert.ok(fetchCalls.every((entry) => entry.includes("test-key")));
+});
+
+test("mfds food-safety search endpoint requires query", async (t) => {
+  const app = buildServer();
+
+  t.after(async () => {
+    await app.close();
+  });
+
+  const response = await app.inject({
+    method: "GET",
+    url: "/v1/mfds/food-safety/search"
+  });
+
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.json().error, "bad_request");
+});
+
+test("mfds food-safety search endpoint uses sample recall fallback without proxy secrets and caches", async (t) => {
+  const originalFetch = global.fetch;
+  const fetchCalls = [];
+  global.fetch = async (url) => {
+    const text = String(url);
+    fetchCalls.push(text);
+
+    if (text.includes("openapi.foodsafetykorea.go.kr/api/sample/I0490/json/1/50")) {
+      return new Response(
+        JSON.stringify({
+          I0490: {
+            row: [
+              {
+                PRDLST_NM: "맛있는김밥",
+                BSSH_NM: "예시식품",
+                RTRVLPRVNS: "대장균 기준 규격 부적합"
+              }
+            ]
+          }
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json;charset=UTF-8" }
+        }
+      );
+    }
+
+    throw new Error(`unexpected URL: ${url}`);
+  };
+
+  const app = buildServer({
+    env: {
+      KSKILL_PROXY_CACHE_TTL_MS: "60000"
+    }
+  });
+
+  t.after(async () => {
+    global.fetch = originalFetch;
+    await app.close();
+  });
+
+  const url = "/v1/mfds/food-safety/search?query=%EA%B9%80%EB%B0%A5&limit=5";
+  const first = await app.inject({ method: "GET", url });
+  const second = await app.inject({ method: "GET", url });
+
+  assert.equal(first.statusCode, 200);
+  assert.equal(first.json().proxy.cache.hit, false);
+  assert.equal(second.json().proxy.cache.hit, true);
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(first.json().items[0].source, "foodsafetykorea_recall");
+  assert.match(first.json().warnings.join(" "), /sample feed/);
+});
+
+test("mfds food-safety search endpoint uses live recall key when configured", async (t) => {
+  const originalFetch = global.fetch;
+  const fetchCalls = [];
+  global.fetch = async (url) => {
+    const text = String(url);
+    fetchCalls.push(text);
+
+    if (text.includes("PrsecImproptFoodInfoService03/getPrsecImproptFoodList01")) {
+      return new Response(
+        JSON.stringify({
+          body: {
+            items: {
+              item: [
+                {
+                  PRDUCT: "예시 유부초밥",
+                  ENTRPS: "예시푸드",
+                  IMPROPT_ITM: "황색포도상구균",
+                  INSPCT_RESULT: "기준 부적합"
+                }
+              ]
+            }
+          }
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json;charset=UTF-8" }
+        }
+      );
+    }
+
+    if (text.includes("openapi.foodsafetykorea.go.kr/api/live-food-key/I0490/json/1/50")) {
+      return new Response(
+        JSON.stringify({
+          I0490: {
+            row: [
+              {
+                PRDLST_NM: "예시 유부초밥",
+                BSSH_NM: "예시푸드",
+                RTRVLPRVNS: "회수 조치"
+              }
+            ]
+          }
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json;charset=UTF-8" }
+        }
+      );
+    }
+
+    throw new Error(`unexpected URL: ${url}`);
+  };
+
+  const app = buildServer({
+    env: {
+      DATA_GO_KR_API_KEY: "data-go-key",
+      FOODSAFETYKOREA_API_KEY: "live-food-key"
+    }
+  });
+
+  t.after(async () => {
+    global.fetch = originalFetch;
+    await app.close();
+  });
+
+  const response = await app.inject({
+    method: "GET",
+    url: "/v1/mfds/food-safety/search?query=%EC%9C%A0%EB%B6%80%EC%B4%88%EB%B0%A5&limit=5"
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json().items[0].product_name, "예시 유부초밥");
+  assert.ok(fetchCalls.some((entry) => entry.includes("data-go-key")));
+  assert.ok(fetchCalls.some((entry) => entry.includes("live-food-key")));
+  assert.doesNotMatch(response.json().warnings.join(" "), /sample feed/);
 });
