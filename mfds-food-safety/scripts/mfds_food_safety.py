@@ -163,6 +163,23 @@ def search_health_food_ingredient(
     return request_json(request)
 
 
+def search_product_report(
+    query: str,
+    *,
+    limit: int = 10,
+    base_url: str | None = None,
+    request_json: Any = read_json_response,
+) -> dict[str, Any]:
+    resolved_base_url = resolve_proxy_base_url(base_url)
+    url = f"{resolved_base_url}/v1/mfds/food-safety/product-report"
+    params = urllib.parse.urlencode({"query": query, "limit": str(limit)})
+    request = urllib.request.Request(
+        f"{url}?{params}",
+        headers={"Accept": "application/json", "User-Agent": "k-skill-mfds/1.0"},
+    )
+    return request_json(request)
+
+
 def search_inspection_fail(
     query: str,
     *,
@@ -193,6 +210,11 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--limit", type=int, default=10)
     search.add_argument("--proxy-base-url")
 
+    product_report = subparsers.add_parser("product-report", help="search health food product manufacturing reports")
+    product_report.add_argument("--query", required=True)
+    product_report.add_argument("--limit", type=int, default=10)
+    product_report.add_argument("--proxy-base-url")
+
     ingredient = subparsers.add_parser("health-food-ingredient", help="search health food ingredient recognition status")
     ingredient.add_argument("--query", required=True)
     ingredient.add_argument("--limit", type=int, default=10)
@@ -215,6 +237,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "search":
         try:
             payload = search_food_safety(args.query, limit=args.limit, base_url=args.proxy_base_url)
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
+            return 0
+        except (ValueError, ApiError) as error:
+            print(json.dumps({"error": str(error)}, ensure_ascii=False, indent=2), file=sys.stderr)
+            return 1
+
+    if args.command == "product-report":
+        try:
+            payload = search_product_report(args.query, limit=args.limit, base_url=args.proxy_base_url)
             print(json.dumps(payload, ensure_ascii=False, indent=2))
             return 0
         except (ValueError, ApiError) as error:

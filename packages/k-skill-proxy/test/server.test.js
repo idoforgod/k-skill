@@ -2568,3 +2568,140 @@ test("mfds inspection-fail endpoint uses sample fallback without key and caches"
   assert.equal(first.json().items[0].product_name, "쪽갓");
   assert.match((first.json().warnings || []).join(" "), /sample feed/);
 });
+
+test("mfds product-report endpoint requires query", async (t) => {
+  const app = buildServer();
+
+  t.after(async () => {
+    await app.close();
+  });
+
+  const response = await app.inject({
+    method: "GET",
+    url: "/v1/mfds/food-safety/product-report"
+  });
+
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.json().error, "bad_request");
+});
+
+test("mfds product-report endpoint uses sample fallback without key and caches", async (t) => {
+  const originalFetch = global.fetch;
+  const fetchCalls = [];
+  global.fetch = async (url) => {
+    const text = String(url);
+    fetchCalls.push(text);
+
+    if (text.includes("openapi.foodsafetykorea.go.kr/api/sample/I0030/json/1/")) {
+      return new Response(
+        JSON.stringify({
+          I0030: {
+            row: [
+              {
+                PRDLST_REPORT_NO: "20140017002183",
+                PRDLST_NM: "차전자피 다이어트",
+                BSSH_NM: "예시건강(주)",
+                RAWMTRL_NM: "차전자피식이섬유",
+                PRIMARY_FNCLTY: "배변활동 원활에 도움",
+                IFTKN_ATNT_MATR_CN: "충분한 물과 함께 섭취",
+                STDR_STND: "식이섬유: 표시량의 80% 이상",
+                PRDT_SHAP_CD_NM: "분말",
+                POG_DAYCNT: "제조일로부터 24개월",
+                PRMS_DT: "20200101"
+              }
+            ]
+          }
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json;charset=UTF-8" }
+        }
+      );
+    }
+
+    throw new Error(`unexpected URL: ${url}`);
+  };
+
+  const app = buildServer({
+    env: {
+      KSKILL_PROXY_CACHE_TTL_MS: "60000"
+    }
+  });
+
+  t.after(async () => {
+    global.fetch = originalFetch;
+    await app.close();
+  });
+
+  const url = "/v1/mfds/food-safety/product-report?query=%EC%B0%A8%EC%A0%84%EC%9E%90%ED%94%BC&limit=5";
+  const first = await app.inject({ method: "GET", url });
+  const second = await app.inject({ method: "GET", url });
+
+  assert.equal(first.statusCode, 200);
+  assert.equal(first.json().proxy.cache.hit, false);
+  assert.equal(second.json().proxy.cache.hit, true);
+  assert.equal(first.json().items[0].source, "foodsafetykorea_product_report");
+  assert.equal(first.json().items[0].product_name, "차전자피 다이어트");
+  assert.equal(first.json().items[0].raw_materials, "차전자피식이섬유");
+  assert.match((first.json().warnings || []).join(" "), /sample feed/);
+});
+
+test("mfds product-report endpoint uses live key with server-side filter", async (t) => {
+  const originalFetch = global.fetch;
+  const fetchCalls = [];
+  global.fetch = async (url) => {
+    const text = String(url);
+    fetchCalls.push(text);
+
+    if (text.includes("openapi.foodsafetykorea.go.kr/api/live-food-key/I0030/json/1/")) {
+      return new Response(
+        JSON.stringify({
+          I0030: {
+            row: [
+              {
+                PRDLST_REPORT_NO: "20200001",
+                PRDLST_NM: "차전자피 솔루션",
+                BSSH_NM: "예시바이오",
+                RAWMTRL_NM: "차전자피식이섬유",
+                PRIMARY_FNCLTY: "배변활동 원활",
+                IFTKN_ATNT_MATR_CN: "의사 상담 권장",
+                STDR_STND: "식이섬유 80% 이상",
+                PRDT_SHAP_CD_NM: "분말",
+                POG_DAYCNT: "24개월",
+                PRMS_DT: "20200527"
+              }
+            ]
+          }
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json;charset=UTF-8" }
+        }
+      );
+    }
+
+    throw new Error(`unexpected URL: ${url}`);
+  };
+
+  const app = buildServer({
+    env: {
+      FOODSAFETYKOREA_API_KEY: "live-food-key"
+    }
+  });
+
+  t.after(async () => {
+    global.fetch = originalFetch;
+    await app.close();
+  });
+
+  const response = await app.inject({
+    method: "GET",
+    url: "/v1/mfds/food-safety/product-report?query=%EC%B0%A8%EC%A0%84%EC%9E%90%ED%94%BC&limit=5"
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.ok(fetchCalls.some((entry) => entry.includes("live-food-key")));
+  assert.ok(fetchCalls.some((entry) => entry.includes("PRDLST_NM=")));
+  assert.ok(fetchCalls.some((entry) => entry.includes("RAWMTRL_NM=")));
+  assert.ok(!response.json().warnings || !response.json().warnings.some((w) => /sample feed/.test(w)));
+});

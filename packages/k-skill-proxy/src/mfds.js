@@ -14,6 +14,9 @@ const HEALTH_FOOD_PRODUCT_LIVE_URL = "https://openapi.foodsafetykorea.go.kr/api/
 const INSPECTION_FAIL_SAMPLE_URL = "https://openapi.foodsafetykorea.go.kr/api/sample/I2620/json/{start}/{end}";
 const INSPECTION_FAIL_LIVE_URL = "https://openapi.foodsafetykorea.go.kr/api/{apiKey}/I2620/json/{start}/{end}";
 
+const HEALTH_FOOD_PRODUCT_REPORT_SAMPLE_URL = "https://openapi.foodsafetykorea.go.kr/api/sample/I0030/json/{start}/{end}";
+const HEALTH_FOOD_PRODUCT_REPORT_LIVE_URL = "https://openapi.foodsafetykorea.go.kr/api/{apiKey}/I0030/json/{start}/{end}";
+
 class ProxyError extends Error {
   constructor(message, { code = "proxy_error", statusCode = 502 } = {}) {
     super(message);
@@ -199,6 +202,22 @@ function normalizeHealthFoodProductRow(item) {
     daily_intake_high: summarizeText(item.DAY_INTK_HIGHLIMIT),
     intake_unit: summarizeText(item.WT_UNIT),
     precautions: summarizeText(item.IFTKN_ATNT_MATR_CN)
+  };
+}
+
+function normalizeProductReportRow(item) {
+  return {
+    source: "foodsafetykorea_product_report",
+    product_name: summarizeText(item.PRDLST_NM),
+    company_name: summarizeText(item.BSSH_NM),
+    raw_materials: summarizeText(item.RAWMTRL_NM),
+    individual_raw_materials: summarizeText(item.INDIV_RAWMTRL_NM),
+    functionality: summarizeText(item.PRIMARY_FNCLTY),
+    precautions: summarizeText(item.IFTKN_ATNT_MATR_CN),
+    standard: summarizeText(item.STDR_STND),
+    product_shape: summarizeText(item.PRDT_SHAP_CD_NM),
+    shelf_life: summarizeText(item.POG_DAYCNT),
+    approved_at: summarizeText(item.PRMS_DT)
   };
 }
 
@@ -484,10 +503,59 @@ async function fetchInspectionFail({ query, limit, foodsafetyKoreaApiKey, fetchI
   };
 }
 
+async function fetchHealthFoodProductReport({ query, limit, foodsafetyKoreaApiKey, fetchImpl = global.fetch }) {
+  const warnings = [];
+  const fetchCount = Math.max(limit * 5, 50);
+
+  const baseUrl = foodsafetyKoreaApiKey
+    ? HEALTH_FOOD_PRODUCT_REPORT_LIVE_URL.replace("{apiKey}", encodeURIComponent(foodsafetyKoreaApiKey))
+    : HEALTH_FOOD_PRODUCT_REPORT_SAMPLE_URL;
+
+  const items = [];
+
+  const searchPaths = [
+    `/PRDLST_NM=${encodeURIComponent(query)}`,
+    `/RAWMTRL_NM=${encodeURIComponent(query)}`
+  ];
+
+  const fetches = searchPaths.map((path) =>
+    requestJson(
+      baseUrl.replace("{start}", "1").replace("{end}", String(fetchCount)) + path,
+      { fetchImpl }
+    ).catch((error) => { warnings.push(`I0030: ${error.message}`); return null; })
+  );
+
+  const results = await Promise.all(fetches);
+  const seen = new Set();
+
+  for (const payload of results) {
+    if (!payload) continue;
+    for (const row of extractFoodSafetyKoreaRows(payload, "I0030")) {
+      const key = row.PRDLST_REPORT_NO || `${row.PRDLST_NM}-${row.BSSH_NM}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        items.push(normalizeProductReportRow(row));
+      }
+    }
+  }
+
+  if (!foodsafetyKoreaApiKey) {
+    warnings.push("FOODSAFETYKOREA_API_KEY is not configured on the proxy server, so results use the public sample feed.");
+  }
+
+  return {
+    query,
+    items: items.slice(0, limit),
+    warnings: warnings.length > 0 ? warnings : undefined,
+    note: "이 결과는 공식 건강기능식품 품목제조 신고사항 기반 참고 정보이며, 섭취 가능 여부의 최종 판단은 의료진 상담이 우선입니다."
+  };
+}
+
 module.exports = {
   fetchMfdsDrugLookup,
   fetchMfdsFoodSafetySearch,
   fetchHealthFoodIngredient,
+  fetchHealthFoodProductReport,
   fetchInspectionFail,
   normalizeMfdsDrugLookupQuery,
   normalizeMfdsFoodSafetyQuery

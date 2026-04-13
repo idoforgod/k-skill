@@ -8,6 +8,7 @@ const {
   fetchMfdsDrugLookup,
   fetchMfdsFoodSafetySearch,
   fetchHealthFoodIngredient,
+  fetchHealthFoodProductReport,
   fetchInspectionFail,
   normalizeMfdsDrugLookupQuery,
   normalizeMfdsFoodSafetyQuery
@@ -1885,6 +1886,66 @@ function buildServer({ env = process.env, provider = null, now = () => new Date(
     let payload;
     try {
       payload = await fetchInspectionFail({
+        query: normalized.query,
+        limit: normalized.limit,
+        foodsafetyKoreaApiKey: config.foodsafetyKoreaApiKey
+      });
+    } catch (error) {
+      reply.code(error.statusCode && error.statusCode >= 400 ? error.statusCode : 502);
+      return {
+        error: error.code || "proxy_error",
+        message: error.message
+      };
+    }
+
+    payload.proxy = {
+      name: config.proxyName,
+      cache: {
+        hit: false,
+        ttl_ms: config.cacheTtlMs
+      },
+      requested_at: new Date().toISOString()
+    };
+
+    cache.set(cacheKey, payload, config.cacheTtlMs);
+    return payload;
+  });
+
+  app.get("/v1/mfds/food-safety/product-report", async (request, reply) => {
+    let normalized;
+
+    try {
+      normalized = normalizeMfdsFoodSafetyQuery(request.query || {});
+    } catch (error) {
+      reply.code(400);
+      return {
+        error: "bad_request",
+        message: error.message
+      };
+    }
+
+    const cacheKey = makeCacheKey({
+      route: "mfds-product-report",
+      ...normalized,
+      hasKey: Boolean(config.foodsafetyKoreaApiKey)
+    });
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return {
+        ...cached,
+        proxy: {
+          ...cached.proxy,
+          cache: {
+            hit: true,
+            ttl_ms: config.cacheTtlMs
+          }
+        }
+      };
+    }
+
+    let payload;
+    try {
+      payload = await fetchHealthFoodProductReport({
         query: normalized.query,
         limit: normalized.limit,
         foodsafetyKoreaApiKey: config.foodsafetyKoreaApiKey
