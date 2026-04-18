@@ -7,6 +7,8 @@
 - `korail2` / `carpedm20/korail2`: https://github.com/carpedm20/korail2
 - `korail2` anti-bot bypass PR #54: https://github.com/carpedm20/korail2/pull/54
 - `kbo-game`: https://github.com/vkehfdl1/kbo-game
+- KBL 일정/결과 API: https://api.kbl.or.kr/match/list
+- KBL 팀 순위 API: https://api.kbl.or.kr/league/rank/team
 - tossinvest-cli: https://github.com/JungHoonGhae/tossinvest-cli
 - 하이패스 메인: https://www.hipass.co.kr/main.do
 - 하이패스 로그인: https://www.hipass.co.kr/comm/lginpg.do
@@ -23,10 +25,14 @@
 - Riot LoL Esports live window feed: https://feed.lolesports.com/livestats/v1/window/<gameId>
 - Riot LoL Esports live details feed: https://feed.lolesports.com/livestats/v1/details/<gameId>
 - Oracle's Elixir data glossary: https://oracleselixir.com/tools/downloads
-- `@ohah/hwpjs`: https://github.com/ohah/hwpjs
-- `hwp-mcp`: https://github.com/jkf87/hwp-mcp
+- `kordoc`: https://github.com/chrisryugj/kordoc
+- `pdfjs-dist`: https://www.npmjs.com/package/pdfjs-dist
 - korean-law-mcp: https://github.com/chrisryugj/korean-law-mcp
 - real-estate-mcp: https://github.com/tae0y/real-estate-mcp/tree/main
+- 한국장학재단 학자금 지원구간 산정절차: https://www.kosaf.go.kr/ko/tuition.do?pg=tuition04_09_01&type=tuition
+- 한국장학재단 학자금 지원구간 경곗값 확인: https://www.kosaf.go.kr/ko/tuition.do?naviParam=JH%2C01%2C01%2C03&pg=tuition04_09_07
+- 한국장학재단 푸른등대 기부장학금: https://www.kosaf.go.kr/ko/scholar.do?pg=scholarship05_11_01
+- 삼성꿈장학재단: https://www.sdream.or.kr/w/web60gV
 - korea-stock-mcp: https://github.com/jjlabsio/korea-stock-mcp
 - 공공데이터포털 의약품개요정보(e약은요): https://www.data.go.kr/data/15075057/openapi.do
 - 식약처 e약은요 endpoint: https://apis.data.go.kr/1471000/DrbEasyDrugInfoService/getDrbEasyDrugList
@@ -81,6 +87,8 @@
 - olive-young products API: https://mcp.aka.page/api/oliveyoung/products
 - olive-young inventory API: https://mcp.aka.page/api/oliveyoung/inventory
 - daiso/olive-young public MCP endpoint: https://mcp.aka.page/mcp
+- hola-poke-yeoksam reference repo: https://github.com/mnspkm/hola-poke-yeoksam-skill
+- hola-poke-yeoksam remote MCP endpoint: https://hola-poke-yeoksam-skill.onrender.com/mcp
 - coupang-mcp (MCP 서버): https://github.com/uju777/coupang-mcp
 - coupang-mcp endpoint: https://yuju777-coupang-mcp.hf.space/mcp
 - bunjang-cli package: https://www.npmjs.com/package/bunjang-cli
@@ -101,6 +109,10 @@
 - Opinet 반경 내 주유소 API: https://www.opinet.co.kr/api/aroundAll.do
 - Opinet 주유소 상세정보 API: https://www.opinet.co.kr/api/detailById.do
 - Opinet 지역코드 API: https://www.opinet.co.kr/api/areaCode.do
+- 공공데이터포털 공중화장실 표준데이터: https://www.data.go.kr/data/15012892/standard.do
+- 공중화장실정보 파일 소개: https://file.localdata.go.kr/file/public_restroom_info/info
+- 공중화장실정보 전국 CSV: https://file.localdata.go.kr/file/download/public_restroom_info/info
+- 공중화장실정보 지역별 CSV: https://file.localdata.go.kr/file/download/public_restroom_info/info?orgCode=<시도코드>
 - 서울특별시 지하철 실시간 도착정보: https://www.data.go.kr/data/15058052/openapi.do
 - 경찰청 LOST112 습득물 목록: https://www.lost112.go.kr/find/findList.do
 - 서울교통공사 유실물센터: https://www.seoulmetro.co.kr/kr/page.do?menuIdx=541
